@@ -1,40 +1,52 @@
 import { useState } from 'react';
 
-const EXTRACT_SCRIPT = `// YouTube History Extractor v5
+const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
 (async () => {
+  const STORAGE_KEY = 'yt_history_extract';
   const entries = [];
   const seen = new Set();
   let lastCount = 0;
   let stableCount = 0;
   let running = true;
   let lastSaveCount = 0;
-  const SAVE_INTERVAL = 1000;
+  const SAVE_INTERVAL = 500;
   const startTime = Date.now();
 
-  // Stop function - type stop() in console
-  window.stop = () => {
-    running = false;
-    console.log('🛑 Stopping... will download shortly');
-  };
-
-  // Resume function - paste previous JSON to continue where you left off
-  window.resume = (prevData) => {
-    if (!Array.isArray(prevData)) {
-      console.log('❌ Invalid data. Use: resume(JSON.parse(\\'[paste your JSON here]\\'))');
-      return;
-    }
-    let added = 0;
-    prevData.forEach(entry => {
-      if (entry.titleUrl && !seen.has(entry.titleUrl)) {
-        seen.add(entry.titleUrl);
-        entries.push(entry);
-        added++;
+  // Load from localStorage
+  const loadSaved = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        let added = 0;
+        data.forEach(entry => {
+          if (entry.titleUrl && !seen.has(entry.titleUrl)) {
+            seen.add(entry.titleUrl);
+            entries.push(entry);
+            added++;
+          }
+        });
+        if (added > 0) {
+          console.log(\`✅ Auto-loaded \${added.toLocaleString()} videos from previous session\`);
+          lastSaveCount = entries.length;
+          return true;
+        }
       }
-    });
-    lastSaveCount = entries.length;
-    console.log(\`✅ Loaded \${added} previous videos. Total: \${entries.length}\`);
+    } catch (e) {}
+    return false;
   };
 
+  // Save to localStorage
+  const saveToStorage = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    } catch (e) {
+      console.log('⚠️ localStorage full, downloading backup...');
+      download();
+    }
+  };
+
+  // Download file
   const download = () => {
     const blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
     const a = document.createElement('a');
@@ -45,17 +57,35 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v5
     document.body.removeChild(a);
   };
 
-  console.log('🎬 YouTube History Extractor v5');
+  // Stop and save
+  window.stop = () => {
+    running = false;
+    console.log('🛑 Stopping...');
+  };
+
+  // Clear saved data to start fresh
+  window.clear = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    console.log('🗑️ Cleared saved data. Refresh page and run again to start fresh.');
+  };
+
+  // Manual download
+  window.download = download;
+
+  console.log('🎬 YouTube History Extractor v6');
   console.log('');
   console.log('📍 Commands:');
-  console.log('   stop()  - Stop and download');
-  console.log('   resume(data) - Load previous export first');
+  console.log('   stop()     - Pause and save (resume anytime)');
+  console.log('   download() - Download JSON file');
+  console.log('   clear()    - Clear saved data to start fresh');
   console.log('');
-  console.log('💡 To resume: Open previous JSON, copy contents,');
-  console.log('   then run: resume(JSON.parse(\\'<paste here>\\'))');
-  console.log('');
-  console.log('⏳ Starting in 3s... (run resume() now if needed)');
-  await new Promise(r => setTimeout(r, 3000));
+
+  const hadSaved = loadSaved();
+  if (hadSaved) {
+    console.log('💾 Progress auto-saved. Run anytime to continue.');
+    console.log('');
+  }
+
   console.log('🚀 Scrolling...\\n');
 
   const collectVideos = () => {
@@ -112,10 +142,10 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v5
     await new Promise(r => setTimeout(r, 1200));
     collectVideos();
 
-    // Auto-save checkpoint
+    // Auto-save to localStorage
     if (entries.length - lastSaveCount >= SAVE_INTERVAL) {
-      console.log(\`💾 Auto-saving checkpoint (\${entries.length} videos)...\`);
-      download();
+      saveToStorage();
+      console.log(\`💾 Auto-saved (\${entries.length.toLocaleString()} videos)\`);
       lastSaveCount = entries.length;
     }
 
@@ -135,11 +165,21 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v5
   }
 
   const totalTime = ((Date.now() - startTime) / 60000).toFixed(1);
-  console.log(\`\\n✅ Done! \${entries.length.toLocaleString()} videos in \${totalTime} min\`);
-  console.log('💾 Downloading...');
-  download();
+  saveToStorage();
+  console.log(\`\\n✅ \${running ? 'Complete!' : 'Paused.'} \${entries.length.toLocaleString()} videos (\${totalTime} min)\`);
+  console.log('');
+  console.log('📁 Data saved to browser. Options:');
+  console.log('   • Run script again anytime to continue');
+  console.log('   • Type download() to get JSON file');
+  console.log('   • Type clear() to start fresh');
+  if (running) {
+    console.log('');
+    console.log('💾 Downloading final file...');
+    download();
+    localStorage.removeItem(STORAGE_KEY);
+  }
   delete window.stop;
-  delete window.resume;
+  delete window.clear;
 })();`;
 
 // Create minified bookmarklet
@@ -211,7 +251,7 @@ export function BrowserExtract() {
               >
                 Open YouTube History →
               </a>
-              <p className="text-[10px] text-[var(--yt-gray)] mt-1">Once there, click "Extract YT History" in your bookmarks bar</p>
+              <p className="text-[10px] text-[var(--yt-gray)] mt-1">Click the bookmarklet to start. Progress auto-saves — run again anytime to continue.</p>
             </div>
           </div>
         </div>
@@ -274,7 +314,7 @@ export function BrowserExtract() {
 
           {/* Commands */}
           <div className="mt-3 pt-3 border-t border-[#eee] text-[10px] text-[var(--yt-gray)]">
-            <strong>Console commands:</strong> <code className="bg-[#f0f0f0] px-1">stop()</code> to download early, <code className="bg-[#f0f0f0] px-1">resume(data)</code> to continue previous export
+            <strong>Commands:</strong> <code className="bg-[#f0f0f0] px-1">stop()</code> pause & save, <code className="bg-[#f0f0f0] px-1">download()</code> get JSON, <code className="bg-[#f0f0f0] px-1">clear()</code> start fresh
           </div>
         </div>
       </div>
