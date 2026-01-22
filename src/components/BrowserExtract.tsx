@@ -257,13 +257,10 @@ export function BrowserExtract() {
           </div>
         </div>
 
-        {/* Info notes */}
-        <div className="px-4 pb-4 space-y-2 text-[11px] text-[var(--yt-gray)]">
+        {/* Info note */}
+        <div className="px-4 pb-4 text-[11px] text-[var(--yt-gray)]">
           <div className="p-2 bg-[#e8f5e9] border border-[#c8e6c9] rounded">
             <strong>💾 Auto-save:</strong> Progress saves every 500 videos. Type <code className="bg-[#fff] px-1">stop()</code> to pause, or just close the tab. Run again to continue where you left off.
-          </div>
-          <div className="p-2 bg-[#fff3e0] border border-[#ffe0b2] rounded">
-            <strong>⚠️ Ignore warnings:</strong> You may see "resource preloaded but not used" errors — these are from YouTube, not the script. They're harmless.
           </div>
         </div>
       </div>
