@@ -90,6 +90,18 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
   // Manual download
   window.download = download;
 
+  // Check status
+  window.status = () => {
+    console.log(\`📊 Status: \${entries.length.toLocaleString()} total videos in memory\`);
+    console.log(\`   Session start: \${sessionStart.toLocaleString()}\`);
+    console.log(\`   This session: \${(entries.length - sessionStart).toLocaleString()}\`);
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const storedData = JSON.parse(stored);
+      console.log(\`   In storage: \${storedData.length.toLocaleString()}\`);
+    }
+  };
+
   console.log('🎬 YouTube History Extractor v7');
   console.log('');
   console.log('📍 Commands:');
@@ -215,18 +227,22 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
   saveToStorage();
   console.log(\`\\n✅ \${running ? 'Complete!' : 'Paused.'} \${entries.length.toLocaleString()} videos (\${totalTime} min)\`);
   console.log('');
-  console.log('📁 Data saved. Options:');
-  console.log('   • Run script again to continue');
-  console.log('   • Type download() to get JSON file');
-  console.log('   • Type clear() to start fresh');
   if (running) {
+    console.log('🎉 Reached end of history!');
     console.log('');
-    console.log('💾 Downloading final file...');
+    console.log(\`💾 Downloading \${entries.length.toLocaleString()} videos...\`);
     download();
-    localStorage.removeItem(STORAGE_KEY);
+    console.log('');
+    console.log('📁 Data also saved in browser storage.');
+    console.log('   • Type clear() to reset for next time');
+  } else {
+    console.log('📁 Data saved. Options:');
+    console.log('   • Paste script again to continue');
+    console.log('   • Type download() to get JSON file');
+    console.log('   • Type clear() to start fresh');
   }
   delete window.stop;
-  delete window.clear;
+  delete window.status;
 })();`;
 
 export function BrowserExtract() {
