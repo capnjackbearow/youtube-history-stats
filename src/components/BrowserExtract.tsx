@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const EXTRACT_SCRIPT = `// YouTube History Extractor v4 - Fast Edition
+const EXTRACT_SCRIPT = `// YouTube History Extractor v5
 (async () => {
   const entries = [];
   const seen = new Set();
@@ -8,13 +8,31 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v4 - Fast Edition
   let stableCount = 0;
   let running = true;
   let lastSaveCount = 0;
-  const SAVE_INTERVAL = 1000; // Auto-save every 1000 videos
+  const SAVE_INTERVAL = 1000;
   const startTime = Date.now();
 
-  // Stop function - type stop() in console to stop and download
+  // Stop function - type stop() in console
   window.stop = () => {
     running = false;
     console.log('🛑 Stopping... will download shortly');
+  };
+
+  // Resume function - paste previous JSON to continue where you left off
+  window.resume = (prevData) => {
+    if (!Array.isArray(prevData)) {
+      console.log('❌ Invalid data. Use: resume(JSON.parse(\\'[paste your JSON here]\\'))');
+      return;
+    }
+    let added = 0;
+    prevData.forEach(entry => {
+      if (entry.titleUrl && !seen.has(entry.titleUrl)) {
+        seen.add(entry.titleUrl);
+        entries.push(entry);
+        added++;
+      }
+    });
+    lastSaveCount = entries.length;
+    console.log(\`✅ Loaded \${added} previous videos. Total: \${entries.length}\`);
   };
 
   const download = () => {
@@ -27,9 +45,18 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v4 - Fast Edition
     document.body.removeChild(a);
   };
 
-  console.log('🎬 YouTube History Extractor v4');
-  console.log('📍 Type stop() anytime to stop and download');
-  console.log('⏳ Starting...\\n');
+  console.log('🎬 YouTube History Extractor v5');
+  console.log('');
+  console.log('📍 Commands:');
+  console.log('   stop()  - Stop and download');
+  console.log('   resume(data) - Load previous export first');
+  console.log('');
+  console.log('💡 To resume: Open previous JSON, copy contents,');
+  console.log('   then run: resume(JSON.parse(\\'<paste here>\\'))');
+  console.log('');
+  console.log('⏳ Starting in 3s... (run resume() now if needed)');
+  await new Promise(r => setTimeout(r, 3000));
+  console.log('🚀 Scrolling...\\n');
 
   const collectVideos = () => {
     document.querySelectorAll('a[href*="watch?v="], a[href*="/shorts/"]').forEach(link => {
@@ -112,6 +139,7 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v4 - Fast Edition
   console.log('💾 Downloading...');
   download();
   delete window.stop;
+  delete window.resume;
 })();`;
 
 export function BrowserExtract() {
@@ -157,7 +185,7 @@ export function BrowserExtract() {
         <span className={`yt-expand-arrow ${isExpanded ? 'open' : ''}`}>▼</span>
       </button>
 
-      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[800px]' : 'max-h-0'}`}>
+      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[900px]' : 'max-h-0'}`}>
         <div className="p-4 border-t border-[var(--yt-gray-border)]">
           {/* Speed note */}
           <div className="flex items-center gap-2 text-[12px] text-[var(--yt-gray)] mb-4 pb-3 border-b border-[#eee]">
@@ -213,9 +241,11 @@ export function BrowserExtract() {
           </details>
 
           {/* Note */}
-          <div className="mt-4 pt-3 border-t border-[#eee] text-[11px] text-[var(--yt-gray)]">
-            <strong>Tip:</strong> If your browser slows down, type <code className="bg-[#f0f0f0] px-1">stop()</code> in the console to download what's collected so far.
-            This method doesn't capture exact watch dates, so "History Span" will show as recent.
+          <div className="mt-4 pt-3 border-t border-[#eee] text-[11px] text-[var(--yt-gray)] space-y-2">
+            <p><strong>Commands:</strong></p>
+            <p>• <code className="bg-[#f0f0f0] px-1">stop()</code> — Stop early and download what's collected</p>
+            <p>• <code className="bg-[#f0f0f0] px-1">resume(data)</code> — Load a previous export before scrolling starts</p>
+            <p className="pt-1 text-[10px]">To resume: Open your previous JSON, copy the contents, then run <code className="bg-[#f0f0f0] px-1">resume(JSON.parse('...'))</code> within the first 3 seconds.</p>
           </div>
         </div>
       </div>
