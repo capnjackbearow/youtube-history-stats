@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
+const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
 (async () => {
   const STORAGE_KEY = 'yt_history_extract';
   const entries = [];
@@ -9,7 +9,9 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
   let stableCount = 0;
   let running = true;
   let lastSaveCount = 0;
-  const SAVE_INTERVAL = 500;
+  let sessionStart = 0;
+  const SAVE_INTERVAL = 250;
+  const BATCH_LIMIT = 3000; // Pause for refresh after this many new videos
   const startTime = Date.now();
 
   // Load from localStorage
@@ -27,8 +29,9 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
           }
         });
         if (added > 0) {
-          console.log(\`✅ Auto-loaded \${added.toLocaleString()} videos from previous session\`);
+          console.log(\`✅ Loaded \${added.toLocaleString()} videos from previous session\`);
           lastSaveCount = entries.length;
+          sessionStart = entries.length;
           return true;
         }
       }
@@ -72,17 +75,17 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
   // Manual download
   window.download = download;
 
-  console.log('🎬 YouTube History Extractor v6');
+  console.log('🎬 YouTube History Extractor v7');
   console.log('');
   console.log('📍 Commands:');
-  console.log('   stop()     - Pause and save (resume anytime)');
+  console.log('   stop()     - Pause and save');
   console.log('   download() - Download JSON file');
-  console.log('   clear()    - Clear saved data to start fresh');
+  console.log('   clear()    - Start fresh');
   console.log('');
 
   const hadSaved = loadSaved();
   if (hadSaved) {
-    console.log('💾 Progress auto-saved. Run anytime to continue.');
+    console.log('📂 Continuing from previous session...');
     console.log('');
   }
 
@@ -149,6 +152,21 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
       lastSaveCount = entries.length;
     }
 
+    // Check if we need to refresh to prevent crash
+    const sessionVideos = entries.length - sessionStart;
+    if (sessionVideos >= BATCH_LIMIT) {
+      saveToStorage();
+      console.log('');
+      console.log(\`⚠️ Collected \${sessionVideos.toLocaleString()} videos this session.\`);
+      console.log(\`💾 Total: \${entries.length.toLocaleString()} videos saved.\`);
+      console.log('🔄 Refreshing page to free memory...');
+      console.log('');
+      console.log('👆 Click the bookmarklet again after refresh!');
+      alert('Refreshing to free memory. Click the bookmarklet again to continue!\\n\\nTotal saved: ' + entries.length.toLocaleString() + ' videos');
+      location.reload();
+      return;
+    }
+
     if (entries.length === lastCount) {
       stableCount++;
       if (stableCount >= 3) {
@@ -158,7 +176,8 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
       }
     } else {
       const elapsed = ((Date.now() - startTime) / 60000).toFixed(1);
-      console.log(\`📺 \${entries.length.toLocaleString()} videos (\${elapsed} min)\`);
+      const sessionCount = entries.length - sessionStart;
+      console.log(\`📺 \${entries.length.toLocaleString()} total (\${sessionCount.toLocaleString()} this session, \${elapsed} min)\`);
       stableCount = 0;
       lastCount = entries.length;
     }
@@ -168,8 +187,8 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v6 - Auto-Resume
   saveToStorage();
   console.log(\`\\n✅ \${running ? 'Complete!' : 'Paused.'} \${entries.length.toLocaleString()} videos (\${totalTime} min)\`);
   console.log('');
-  console.log('📁 Data saved to browser. Options:');
-  console.log('   • Run script again anytime to continue');
+  console.log('📁 Data saved. Options:');
+  console.log('   • Run script again to continue');
   console.log('   • Type download() to get JSON file');
   console.log('   • Type clear() to start fresh');
   if (running) {
@@ -260,7 +279,7 @@ export function BrowserExtract() {
         {/* Info note */}
         <div className="px-4 pb-4 text-[11px] text-[var(--yt-gray)]">
           <div className="p-2 bg-[#e8f5e9] border border-[#c8e6c9] rounded">
-            <strong>💾 Auto-save:</strong> Progress saves every 500 videos. Type <code className="bg-[#fff] px-1">stop()</code> to pause, or just close the tab. Run again to continue where you left off.
+            <strong>💾 Auto-save:</strong> Progress saves frequently. Every ~3000 videos, the page auto-refreshes to prevent crashes — just click the bookmarklet again to continue.
           </div>
         </div>
       </div>
