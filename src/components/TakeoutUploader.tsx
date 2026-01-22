@@ -31,7 +31,6 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
         return;
       }
 
-      // Basic validation - check if it looks like YouTube watch history
       const hasYouTubeEntries = data.some(
         (entry: WatchHistoryEntry) => entry.header === 'YouTube'
       );
@@ -82,11 +81,9 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-xl mx-auto">
       <div
-        className={`drop-zone rounded-lg p-12 text-center cursor-pointer transition-all duration-300 ${
-          isDragging ? 'active' : ''
-        }`}
+        className={`yt-upload-zone ${isDragging ? 'active' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -101,66 +98,26 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
         />
 
         {isLoading ? (
-          <div className="space-y-4">
-            <div className="inline-block">
-              <svg
-                className="animate-spin h-12 w-12 text-[var(--accent-amber)]"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-            </div>
-            <p className="font-['VT323'] text-2xl text-[var(--accent-amber)]">
-              LOADING DATA...
-            </p>
+          <div className="space-y-3">
+            <div className="yt-upload-icon">⏳</div>
+            <p className="yt-upload-text">Processing your data...</p>
+            <p className="yt-upload-subtext">This may take a moment for large files</p>
           </div>
         ) : (
           <>
-            {/* VHS Tape Icon */}
-            <div className="mb-6 inline-block">
-              <div className="vhs-tape w-32 h-20 rounded-md mx-auto relative">
-                <div className="absolute inset-4 flex items-center justify-center">
-                  <div className="flex gap-4">
-                    <div className="w-6 h-6 rounded-full border-4 border-[var(--accent-amber)] opacity-60" />
-                    <div className="w-6 h-6 rounded-full border-4 border-[var(--accent-amber)] opacity-60" />
-                  </div>
-                </div>
-                <div className="absolute bottom-1 left-2 right-2 h-2 bg-gradient-to-r from-[var(--accent-amber)] via-[var(--accent-orange)] to-[var(--accent-red)] opacity-80" />
-              </div>
-            </div>
-
-            <h3 className="font-['VT323'] text-3xl text-[var(--text-primary)] mb-2">
-              DROP YOUR WATCH HISTORY
-            </h3>
-            <p className="text-[var(--text-secondary)] text-sm mb-4">
-              Drag & drop your <code className="text-[var(--accent-cyan)] bg-[var(--bg-elevated)] px-2 py-1 rounded">watch-history.json</code> file here
-            </p>
-            <p className="text-[var(--text-secondary)] text-xs">
-              or click to browse
-            </p>
+            <div className="yt-upload-icon">📁</div>
+            <p className="yt-upload-text">Drop your watch-history.json file here</p>
+            <p className="yt-upload-subtext">or click to browse your files</p>
+            <button className="yt-btn yt-btn-primary mt-4">
+              Select File
+            </button>
           </>
         )}
       </div>
 
       {error && (
-        <div className="mt-4 p-4 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg">
-          <p className="font-['VT323'] text-xl text-[var(--accent-red)]">
-            ERROR: {error}
-          </p>
+        <div className="mt-3 p-3 bg-[#fff0f0] border border-[var(--yt-red)] text-[var(--yt-red)] text-[12px]">
+          <strong>Error:</strong> {error}
         </div>
       )}
     </div>

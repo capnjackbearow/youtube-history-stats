@@ -12,7 +12,7 @@ function AnimatedNumber({ value }: { value: number }) {
 
   useEffect(() => {
     const startTime = Date.now();
-    const duration = 1500;
+    const duration = 1000;
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -30,13 +30,10 @@ function AnimatedNumber({ value }: { value: number }) {
 }
 
 export function ContentSection({ stats, type }: ContentSectionProps) {
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(15);
   const [searchQuery, setSearchQuery] = useState('');
 
   const isShorts = type === 'shorts';
-  const accentColor = isShorts ? 'var(--accent-red)' : 'var(--accent-amber)';
-  const title = isShorts ? 'SHORTS' : 'LONG FORM';
-  const icon = isShorts ? '📱' : '🎬';
   const itemLabel = isShorts ? 'shorts' : 'videos';
 
   const filteredChannels = useMemo(() => {
@@ -50,184 +47,134 @@ export function ContentSection({ stats, type }: ContentSectionProps) {
 
   if (stats.totalVideos === 0) {
     return (
-      <div className="h-full flex flex-col">
-        <div className="text-center mb-6">
-          <span className="text-4xl mb-2 block">{icon}</span>
-          <h2
-            className="font-['VT323'] text-3xl mb-1"
-            style={{ color: accentColor }}
-          >
-            {title}
-          </h2>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-[var(--text-secondary)] text-center">
-            No {itemLabel} found in your history
-          </p>
-        </div>
+      <div className="p-8 text-center text-[var(--yt-gray)]">
+        <p className="text-[14px]">No {itemLabel} found in your history</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <span className="text-4xl mb-2 block">{icon}</span>
-        <h2
-          className="font-['VT323'] text-3xl mb-1"
-          style={{ color: accentColor }}
-        >
-          {title}
-        </h2>
-        <div
-          className="h-0.5 w-24 mx-auto"
-          style={{ background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)` }}
-        />
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="vhs-card rounded-lg p-4">
-          <div className="text-xs text-[var(--text-secondary)] mb-1 font-['VT323']">
-            {isShorts ? 'SHORTS WATCHED' : 'VIDEOS WATCHED'}
-          </div>
-          <div
-            className="font-['VT323'] text-2xl"
-            style={{ color: accentColor }}
-          >
+    <div className="flex flex-col">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 border-b border-[var(--yt-gray-border)]">
+        <div className="yt-stat-box border-r border-b border-[var(--yt-gray-border)]">
+          <span className="yt-stat-value">
             <AnimatedNumber value={stats.totalVideos} />
-          </div>
+          </span>
+          <span className="yt-stat-label">{itemLabel} watched</span>
         </div>
-
-        <div className="vhs-card rounded-lg p-4">
-          <div className="text-xs text-[var(--text-secondary)] mb-1 font-['VT323']">TIME WATCHED</div>
-          <div
-            className="font-['VT323'] text-2xl"
-            style={{ color: accentColor }}
-          >
-            {formatDuration(stats.totalEstimatedHours)}
-          </div>
+        <div className="yt-stat-box border-b border-[var(--yt-gray-border)]">
+          <span className="yt-stat-value">{formatDuration(stats.totalEstimatedHours)}</span>
+          <span className="yt-stat-label">time watched</span>
         </div>
-
-        <div className="vhs-card rounded-lg p-4">
-          <div className="text-xs text-[var(--text-secondary)] mb-1 font-['VT323']">CHANNELS</div>
-          <div
-            className="font-['VT323'] text-2xl"
-            style={{ color: accentColor }}
-          >
+        <div className="yt-stat-box border-r border-[var(--yt-gray-border)]">
+          <span className="yt-stat-value">
             <AnimatedNumber value={stats.channelStats.length} />
-          </div>
+          </span>
+          <span className="yt-stat-label">channels</span>
         </div>
-
-        <div className="vhs-card rounded-lg p-4">
-          <div className="text-xs text-[var(--text-secondary)] mb-1 font-['VT323']">HISTORY SPAN</div>
-          <div
-            className="font-['VT323'] text-lg"
-            style={{ color: accentColor }}
-          >
+        <div className="yt-stat-box">
+          <span className="yt-stat-value text-[20px]">
             {stats.oldestWatchDate ? calculateAccountAge(stats.oldestWatchDate) : 'N/A'}
-          </div>
+          </span>
+          <span className="yt-stat-label">history span</span>
           {stats.oldestWatchDate && (
-            <div className="text-[10px] text-[var(--text-secondary)]">
-              Since {formatDate(stats.oldestWatchDate)}
-            </div>
+            <span className="yt-stat-sub">Since {formatDate(stats.oldestWatchDate)}</span>
           )}
         </div>
       </div>
 
       {/* Top Channel */}
       {stats.channelStats.length > 0 && (
-        <div className="vhs-card rounded-lg p-4 mb-6">
+        <div className="p-3 border-b border-[var(--yt-gray-border)] bg-[#fffde7]">
           <div className="flex items-center gap-2 mb-2">
-            <span>🏆</span>
-            <span className="font-['VT323'] text-sm" style={{ color: accentColor }}>
-              #1 CHANNEL
+            <span className="yt-trophy">🏆</span>
+            <span className="text-[11px] font-bold text-[var(--yt-gray)] uppercase">
+              Most Watched Channel
             </span>
           </div>
-          <div className="font-['VT323'] text-xl text-[var(--text-primary)] mb-1 truncate">
-            {stats.channelStats[0].name}
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <a
+                href={stats.channelStats[0].url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--yt-link)] font-bold text-[13px] hover:underline block truncate"
+              >
+                {stats.channelStats[0].name}
+              </a>
+            </div>
+            <div className="text-right ml-4 flex-shrink-0">
+              <div className="font-bold text-[14px]">{stats.channelStats[0].watchCount.toLocaleString()} {itemLabel}</div>
+              <div className="text-[10px] text-[var(--yt-gray)]">{formatDuration(stats.channelStats[0].estimatedHours)}</div>
+            </div>
           </div>
-          <div className="flex justify-between text-xs text-[var(--text-secondary)]">
-            <span>{stats.channelStats[0].watchCount} {itemLabel}</span>
-            <span>{formatDuration(stats.channelStats[0].estimatedHours)}</span>
-          </div>
-          <div className="mt-2 h-1.5 bg-[var(--bg-dark)] rounded-full overflow-hidden">
+          <div className="mt-2 yt-progress">
             <div
-              className="h-full rounded-full"
-              style={{
-                width: `${(stats.channelStats[0].watchCount / stats.totalVideos) * 100}%`,
-                background: accentColor,
-              }}
+              className={`yt-progress-fill ${isShorts ? 'shorts' : ''}`}
+              style={{ width: `${(stats.channelStats[0].watchCount / stats.totalVideos) * 100}%` }}
             />
+          </div>
+          <div className="text-[10px] text-[var(--yt-gray)] mt-1 text-right">
+            {((stats.channelStats[0].watchCount / stats.totalVideos) * 100).toFixed(1)}% of your {itemLabel}
           </div>
         </div>
       )}
 
-      {/* Channel List */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between mb-3">
-          <span className="font-['VT323'] text-sm" style={{ color: accentColor }}>
-            ALL CHANNELS
-          </span>
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-32 bg-[var(--bg-card)] border border-[var(--text-secondary)]/20 rounded px-2 py-1 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)]"
-          />
-        </div>
+      {/* Search */}
+      <div className="p-3 border-b border-[var(--yt-gray-border)] flex items-center justify-between bg-[#fafafa]">
+        <span className="text-[11px] font-bold text-[var(--yt-gray)] uppercase">
+          All Channels ({filteredChannels.length})
+        </span>
+        <input
+          type="text"
+          placeholder="Search channels..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="yt-input w-[140px] text-[11px]"
+        />
+      </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-          {visibleChannels.map((channel, index) => (
-            <div
-              key={channel.url}
-              className="flex items-center gap-2 p-2 rounded hover:bg-[var(--bg-elevated)] transition-colors"
-            >
-              <span
-                className="font-['VT323'] text-sm w-8 text-center"
-                style={{ color: index < 3 ? accentColor : 'var(--text-secondary)' }}
-              >
-                {index < 3 ? ['🥇', '🥈', '🥉'][index] : `#${index + 1}`}
-              </span>
-              <div className="flex-1 min-w-0">
-                <a
-                  href={channel.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-[var(--text-primary)] hover:text-[var(--accent-cyan)] truncate block"
-                >
+      {/* Channel List */}
+      <div className="max-h-[300px] overflow-y-auto">
+        {visibleChannels.map((channel) => {
+          const rank = stats.channelStats.indexOf(channel) + 1;
+          const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+
+          return (
+            <div key={channel.url} className="yt-channel-item">
+              <div className={`yt-channel-rank ${rankClass}`}>
+                {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
+              </div>
+              <div className="yt-channel-name">
+                <a href={channel.url} target="_blank" rel="noopener noreferrer">
                   {channel.name}
                 </a>
               </div>
-              <div className="text-right">
-                <div className="font-['VT323'] text-sm" style={{ color: accentColor }}>
-                  {channel.watchCount}
-                </div>
-                <div className="text-[10px] text-[var(--text-secondary)]">
-                  {formatDuration(channel.estimatedHours)}
-                </div>
+              <div className="yt-channel-meta">
+                <div className="yt-channel-count">{channel.watchCount.toLocaleString()}</div>
+                <div className="yt-channel-time">{formatDuration(channel.estimatedHours)}</div>
               </div>
             </div>
-          ))}
+          );
+        })}
 
-          {hasMore && (
+        {hasMore && (
+          <div className="p-3 text-center border-t border-[#eee]">
             <button
-              onClick={() => setVisibleCount(c => c + 15)}
-              className="w-full py-2 text-xs font-['VT323'] hover:bg-[var(--bg-elevated)] rounded transition-colors"
-              style={{ color: accentColor }}
+              onClick={() => setVisibleCount(c => c + 20)}
+              className="yt-btn"
             >
-              LOAD MORE ({filteredChannels.length - visibleCount} remaining)
+              Show More ({filteredChannels.length - visibleCount} remaining)
             </button>
-          )}
+          </div>
+        )}
 
-          {filteredChannels.length === 0 && (
-            <p className="text-center text-xs text-[var(--text-secondary)] py-4">
-              No channels match "{searchQuery}"
-            </p>
-          )}
-        </div>
+        {filteredChannels.length === 0 && (
+          <div className="p-6 text-center text-[var(--yt-gray)]">
+            No channels match "{searchQuery}"
+          </div>
+        )}
       </div>
     </div>
   );
