@@ -118,11 +118,16 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
 
   console.log('🚀 Scrolling...\\n');
 
+  let lastSeenCount = 0; // Track total video links seen (including duplicates)
+
   const collectVideos = () => {
+    let videosOnPage = 0;
     document.querySelectorAll('a[href*="watch?v="], a[href*="/shorts/"]').forEach(link => {
       const url = link.href?.split('&')[0];
-      if (!url || seen.has(url)) return;
+      if (!url) return;
       if (!url.includes('watch?v=') && !url.includes('/shorts/')) return;
+      videosOnPage++;
+      if (seen.has(url)) return;
 
       let container = link;
       for (let i = 0; i < 8; i++) {
@@ -162,17 +167,15 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
         time: new Date().toISOString()
       });
     });
+    lastSeenCount = videosOnPage;
+    return videosOnPage;
   };
 
   const prevCount = entries.length;
-  collectVideos();
+  let videosOnPage = collectVideos();
   const initialNew = entries.length - prevCount;
-  if (initialNew > 0) {
-    console.log(\`📺 Found \${initialNew} videos on screen (Total: \${entries.length.toLocaleString()})\\n\`);
-  } else {
-    console.log(\`📺 Total: \${entries.length.toLocaleString()} videos\\n\`);
-  }
-  lastCount = entries.length;
+  console.log(\`📺 \${videosOnPage} videos on screen, \${initialNew} new (Total: \${entries.length.toLocaleString()})\\n\`);
+  lastCount = videosOnPage; // Track page content, not just unique videos
 
   while (running && stableCount < 10) {
     window.scrollTo(0, document.documentElement.scrollHeight);
@@ -207,7 +210,8 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
       return;
     }
 
-    if (entries.length === lastCount) {
+    if (lastSeenCount === lastCount) {
+      // Page isn't loading new content
       stableCount++;
       if (stableCount >= 3) {
         window.scrollBy(0, -500);
@@ -217,9 +221,13 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
     } else {
       const elapsed = ((Date.now() - startTime) / 60000).toFixed(1);
       const sessionCount = entries.length - sessionStart;
-      console.log(\`📺 \${entries.length.toLocaleString()} total (\${sessionCount.toLocaleString()} this session, \${elapsed} min)\`);
+      if (sessionCount > 0) {
+        console.log(\`📺 \${entries.length.toLocaleString()} total, +\${sessionCount.toLocaleString()} new (\${elapsed} min)\`);
+      } else {
+        console.log(\`⏳ Scrolling past already-collected videos... (\${elapsed} min)\`);
+      }
       stableCount = 0;
-      lastCount = entries.length;
+      lastCount = lastSeenCount;
     }
   }
 
