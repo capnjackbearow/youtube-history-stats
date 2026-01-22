@@ -5,8 +5,10 @@ export interface WatchHistoryEntry {
   subtitles?: {
     name: string;
     url: string;
+    avatar?: string;
   }[];
   time: string;
+  type?: 'video' | 'short';
   products?: string[];
   activityControls?: string[];
 }
@@ -16,17 +18,20 @@ export interface ChannelStats {
   url: string;
   watchCount: number;
   estimatedHours: number;
-}
-
-export interface ContentStats {
-  totalVideos: number;
-  totalEstimatedHours: number;
-  oldestWatchDate: Date | null;
-  newestWatchDate: Date | null;
-  channelStats: ChannelStats[];
+  avatarUrl?: string;
 }
 
 export interface ParsedStats {
-  longForm: ContentStats;
-  shorts: ContentStats;
+  totalVideos: number;
+  videoCount: number;
+  shortsCount: number;
+  totalEstimatedHours: number;
+  videoEstimatedHours: number;
+  shortsEstimatedHours: number;
+  videoChannelCount: number;
+  shortsChannelCount: number;
+  oldestWatchDate: Date | null;
+  channelStats: ChannelStats[];
+  videoChannelStats: ChannelStats[];
+  shortsChannelStats: ChannelStats[];
 }

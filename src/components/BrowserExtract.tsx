@@ -1,270 +1,152 @@
 import { useState } from 'react';
 
-const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
-(async () => {
-  const STORAGE_KEY = 'yt_history_extract';
-  const entries = [];
-  const seen = new Set();
-  let lastCount = 0;
-  let stableCount = 0;
-  let running = true;
-  let lastSaveCount = 0;
-  let sessionStart = 0;
-  const SAVE_INTERVAL = 250;
-  const BATCH_LIMIT = 5000; // Pause for refresh after this many new videos
-  const startTime = Date.now();
+const API_SCRIPT = `(async function() {
+  var entries = [];
+  var seen = {};
+  var channelAvatars = {};
+  var running = true;
+  var pageCount = 0;
+  var videoCount = 0;
+  var shortsCount = 0;
 
-  // Load from localStorage
-  const loadSaved = () => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const data = JSON.parse(saved);
-        console.log(\`📦 Found \${data.length.toLocaleString()} videos in storage\`);
-        let added = 0;
-        data.forEach(entry => {
-          if (entry.titleUrl && !seen.has(entry.titleUrl)) {
-            seen.add(entry.titleUrl);
-            entries.push(entry);
-            added++;
+  window.stop = function() { running = false; console.log('Stopping...'); };
+  window.status = function() { console.log('Total: ' + entries.length + ' (Videos: ' + videoCount + ', Shorts: ' + shortsCount + ') Pages: ' + pageCount); };
+  window.avatars = function() { return channelAvatars; };
+
+  var getAuth = async function() {
+    var sapisid = document.cookie.split('; ').find(function(c) { return c.startsWith('SAPISID='); })?.split('=')[1];
+    var timestamp = Math.floor(Date.now() / 1000);
+    var input = timestamp + ' ' + sapisid + ' https://www.youtube.com';
+    var hashBuffer = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(input));
+    var hashHex = Array.from(new Uint8Array(hashBuffer)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    return 'SAPISIDHASH ' + timestamp + '_' + hashHex;
+  };
+
+  var getToken = function(obj) { var t = null; (function find(o) { if (!o || t) return; if (typeof o !== 'object') return; if (o.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token) { t = o.continuationItemRenderer.continuationEndpoint.continuationCommand.token; return; } for (var k in o) find(o[k]); })(obj); return t; };
+
+  var extractAll = function(obj) {
+    var vids = [];
+    (function find(o) {
+      if (!o) return;
+      if (typeof o !== 'object') return;
+
+      // Regular videos - lockupViewModel
+      if (o.lockupViewModel && o.lockupViewModel.contentId) {
+        var v = o.lockupViewModel;
+        var id = v.contentId;
+        if (!seen[id]) {
+          seen[id] = true;
+          var meta = v.metadata?.lockupMetadataViewModel;
+          var title = meta?.title?.content || 'Unknown';
+          var channel = meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content || '';
+          var avatar = v.contentImage?.collectionThumbnailViewModel?.primaryThumbnail?.thumbnailViewModel?.image?.sources?.[0]?.url || '';
+          if (!avatar) {
+            avatar = meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.avatarViewModel?.image?.sources?.[0]?.url || '';
           }
-        });
-        if (added > 0) {
-          console.log(\`✅ Loaded \${added.toLocaleString()} videos from previous session\`);
-          lastSaveCount = entries.length;
-          sessionStart = entries.length;
-          return true;
-        } else {
-          console.log('⚠️ All videos already seen, nothing new loaded');
+          if (channel && avatar && !channelAvatars[channel.toLowerCase()]) {
+            channelAvatars[channel.toLowerCase()] = avatar;
+          }
+          vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/watch?v=' + id, subtitles: channel ? [{ name: channel, url: '', avatar: avatar }] : [], time: new Date().toISOString(), type: 'video' });
+          videoCount++;
         }
-      } else {
-        console.log('📭 No saved data found in storage');
       }
-    } catch (e) {
-      console.log('❌ Error loading saved data:', e);
-    }
-    return false;
+
+      // Regular videos - videoRenderer
+      if (o.videoRenderer && o.videoRenderer.videoId) {
+        var vr = o.videoRenderer;
+        var vid = vr.videoId;
+        if (!seen[vid]) {
+          seen[vid] = true;
+          var channelName = vr.shortBylineText?.runs?.[0]?.text || '';
+          var avatar = vr.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url || '';
+          if (!avatar) {
+            avatar = vr.channelThumbnail?.thumbnails?.[0]?.url || '';
+          }
+          if (channelName && avatar && !channelAvatars[channelName.toLowerCase()]) {
+            channelAvatars[channelName.toLowerCase()] = avatar;
+          }
+          vids.push({ header: 'YouTube', title: 'Watched ' + (vr.title?.runs?.[0]?.text || 'Unknown'), titleUrl: 'https://www.youtube.com/watch?v=' + vid, subtitles: channelName ? [{ name: channelName, url: '', avatar: avatar }] : [], time: new Date().toISOString(), type: 'video' });
+          videoCount++;
+        }
+      }
+
+      // Shorts - shortsLockupViewModel
+      if (o.shortsLockupViewModel) {
+        var s = o.shortsLockupViewModel;
+        var shortId = s.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId;
+        if (shortId && !seen[shortId]) {
+          seen[shortId] = true;
+          var accText = s.accessibilityText || '';
+          var title = accText.split(/,\\s*[\\d.]+\\s*(million|thousand|billion)?\\s*views/i)[0] || 'Short';
+          vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/shorts/' + shortId, subtitles: [], time: new Date().toISOString(), type: 'short' });
+          shortsCount++;
+        }
+      }
+
+      for (var k in o) find(o[k]);
+    })(obj);
+    return vids;
   };
 
-  // Save to localStorage
-  const saveToStorage = () => {
+  console.log('=== YouTube History API Scraper (Combined) ===');
+  console.log('Extracts both Videos and Shorts from unfiltered history');
+  console.log('Commands: stop() status()');
+  console.log('');
+
+  var auth = await getAuth();
+  var context = window.ytcfg?.data_?.INNERTUBE_CONTEXT;
+
+  var initial = extractAll(window.ytInitialData);
+  entries = entries.concat(initial);
+  console.log('Initial: ' + initial.length + ' (V: ' + videoCount + ' S: ' + shortsCount + ')');
+
+  var continuation = getToken(window.ytInitialData);
+
+  while (running && continuation) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-      // Verify save
-      const verify = localStorage.getItem(STORAGE_KEY);
-      if (verify) {
-        const parsed = JSON.parse(verify);
-        if (parsed.length !== entries.length) {
-          console.log(\`⚠️ Save mismatch: expected \${entries.length}, got \${parsed.length}\`);
-        }
-      }
-    } catch (e) {
-      console.log('⚠️ localStorage full or error:', e);
-      download();
-    }
-  };
-
-  // Download file
-  const download = () => {
-    const blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'watch-history.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  // Stop and save
-  window.stop = () => {
-    running = false;
-    console.log('🛑 Stopping...');
-  };
-
-  // Clear saved data to start fresh
-  window.clear = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    console.log('🗑️ Cleared saved data. Refresh page and run again to start fresh.');
-  };
-
-  // Manual download
-  window.download = download;
-
-  // Check status
-  window.status = () => {
-    console.log(\`📊 Status: \${entries.length.toLocaleString()} total videos in memory\`);
-    console.log(\`   Session start: \${sessionStart.toLocaleString()}\`);
-    console.log(\`   This session: \${(entries.length - sessionStart).toLocaleString()}\`);
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const storedData = JSON.parse(stored);
-      console.log(\`   In storage: \${storedData.length.toLocaleString()}\`);
-    }
-  };
-
-  console.log('🎬 YouTube History Extractor v7');
-  console.log('');
-  console.log('📍 Commands:');
-  console.log('   stop()     - Pause and save');
-  console.log('   download() - Download JSON file');
-  console.log('   clear()    - Start fresh');
-  console.log('');
-
-  const hadSaved = loadSaved();
-  if (hadSaved) {
-    console.log(\`📂 Starting with \${entries.length.toLocaleString()} videos from previous session\`);
-    console.log('');
+      var resp = await fetch('https://www.youtube.com/youtubei/v1/browse?prettyPrint=false', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': auth, 'X-Origin': 'https://www.youtube.com' }, credentials: 'include', body: JSON.stringify({ context: context, continuation: continuation }) });
+      var data = await resp.json();
+      pageCount++;
+      var newVids = extractAll(data);
+      entries = entries.concat(newVids);
+      if (pageCount % 10 === 0) { console.log('Page ' + pageCount + ': ' + entries.length + ' total (V: ' + videoCount + ' S: ' + shortsCount + ')'); }
+      if (newVids.length === 0) { console.log('No new content, stopping'); break; }
+      continuation = getToken(data);
+      if (!continuation) { console.log('Reached end of history'); break; }
+      await new Promise(function(r) { setTimeout(r, 150); });
+    } catch (e) { console.log('Error: ' + e.message); break; }
   }
 
-  console.log('🚀 Scrolling...\\n');
-
-  let lastSeenCount = 0; // Track total video links seen (including duplicates)
-
-  const collectVideos = () => {
-    let videosOnPage = 0;
-    document.querySelectorAll('a[href*="watch?v="], a[href*="/shorts/"]').forEach(link => {
-      const url = link.href?.split('&')[0];
-      if (!url) return;
-      if (!url.includes('watch?v=') && !url.includes('/shorts/')) return;
-      videosOnPage++;
-      if (seen.has(url)) return;
-
-      let container = link;
-      for (let i = 0; i < 8; i++) {
-        if (!container.parentElement) break;
-        container = container.parentElement;
-        const tagName = container.tagName?.toLowerCase() || '';
-        if (tagName.includes('renderer') || tagName.includes('item')) break;
-      }
-
-      let title = '';
-      if (link.id === 'video-title' || link.id === 'video-title-link') {
-        title = link.textContent?.trim();
-      }
-      if (!title) {
-        const titleEl = container.querySelector('#video-title, [id*="video-title"], h3, span#video-title');
-        title = titleEl?.textContent?.trim();
-      }
-      if (!title && link.textContent?.trim().length > 5) {
-        title = link.textContent.trim();
-      }
-      if (!title) title = 'Unknown Title';
-
-      let channelName = '';
-      let channelUrl = '';
-      const channelLink = container.querySelector('a[href*="/@"], a[href*="/channel/"], a[href*="/c/"], #channel-name a');
-      if (channelLink) {
-        channelName = channelLink.textContent?.trim() || '';
-        channelUrl = channelLink.href || '';
-      }
-
-      seen.add(url);
-      entries.push({
-        header: "YouTube",
-        title: "Watched " + title,
-        titleUrl: url,
-        subtitles: channelName ? [{ name: channelName, url: channelUrl }] : [],
-        time: new Date().toISOString()
-      });
-    });
-    lastSeenCount = videosOnPage;
-    return videosOnPage;
-  };
-
-  const prevCount = entries.length;
-  let videosOnPage = collectVideos();
-  const initialNew = entries.length - prevCount;
-  console.log(\`📺 \${videosOnPage} videos on screen, \${initialNew} new (Total: \${entries.length.toLocaleString()})\\n\`);
-  lastCount = videosOnPage; // Track page content, not just unique videos
-
-  while (running && stableCount < 10) {
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    await new Promise(r => setTimeout(r, 1200));
-    collectVideos();
-
-    // Auto-save to localStorage
-    if (entries.length - lastSaveCount >= SAVE_INTERVAL) {
-      saveToStorage();
-      console.log(\`💾 Auto-saved (\${entries.length.toLocaleString()} videos)\`);
-      lastSaveCount = entries.length;
-    }
-
-    // Check if we need to refresh to prevent crash
-    const sessionVideos = entries.length - sessionStart;
-    if (sessionVideos >= BATCH_LIMIT) {
-      console.log('');
-      console.log(\`⚠️ Collected \${sessionVideos.toLocaleString()} videos this session.\`);
-      console.log(\`💾 Saving \${entries.length.toLocaleString()} total videos to storage...\`);
-      saveToStorage();
-      // Double-check save worked
-      const check = localStorage.getItem(STORAGE_KEY);
-      if (check) {
-        const checkData = JSON.parse(check);
-        console.log(\`✅ Verified: \${checkData.length.toLocaleString()} videos in storage\`);
-      }
-      console.log('🔄 Refreshing page to free memory...');
-      console.log('');
-      console.log('👆 Paste the script again after refresh!');
-      alert('Refreshing to free memory. Paste the script again to continue!\\n\\nTotal saved: ' + entries.length.toLocaleString() + ' videos');
-      location.reload();
-      return;
-    }
-
-    if (lastSeenCount === lastCount) {
-      // Page isn't loading new content
-      stableCount++;
-      if (stableCount >= 3) {
-        window.scrollBy(0, -500);
-        await new Promise(r => setTimeout(r, 400));
-        window.scrollTo(0, document.documentElement.scrollHeight);
-      }
-    } else {
-      const elapsed = ((Date.now() - startTime) / 60000).toFixed(1);
-      const sessionCount = entries.length - sessionStart;
-      if (sessionCount > 0) {
-        console.log(\`📺 \${entries.length.toLocaleString()} total, +\${sessionCount.toLocaleString()} new (\${elapsed} min)\`);
-      } else {
-        console.log(\`⏳ Scrolling past already-collected videos... (\${elapsed} min)\`);
-      }
-      stableCount = 0;
-      lastCount = lastSeenCount;
-    }
-  }
-
-  const totalTime = ((Date.now() - startTime) / 60000).toFixed(1);
-  saveToStorage();
-  console.log(\`\\n✅ \${running ? 'Complete!' : 'Paused.'} \${entries.length.toLocaleString()} videos (\${totalTime} min)\`);
   console.log('');
-  if (running) {
-    console.log('🎉 Reached end of history!');
-    console.log('');
-    console.log(\`💾 Downloading \${entries.length.toLocaleString()} videos...\`);
-    download();
-    console.log('');
-    console.log('📁 Data also saved in browser storage.');
-    console.log('   • Type clear() to reset for next time');
-  } else {
-    console.log('📁 Data saved. Options:');
-    console.log('   • Paste script again to continue');
-    console.log('   • Type download() to get JSON file');
-    console.log('   • Type clear() to start fresh');
-  }
-  delete window.stop;
-  delete window.status;
+  console.log('=== COMPLETE ===');
+  console.log('Videos: ' + videoCount);
+  console.log('Shorts: ' + shortsCount);
+  console.log('Total: ' + entries.length);
+
+  var blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'watch-history-' + entries.length + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  console.log('Downloaded!');
+  window.allEntries = entries;
 })();`;
 
 export function BrowserExtract() {
   const [copied, setCopied] = useState(false);
   const [showScript, setShowScript] = useState(false);
+  const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(EXTRACT_SCRIPT);
+      await navigator.clipboard.writeText(API_SCRIPT);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       const textarea = document.createElement('textarea');
-      textarea.value = EXTRACT_SCRIPT;
+      textarea.value = API_SCRIPT;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
@@ -274,92 +156,114 @@ export function BrowserExtract() {
     }
   };
 
+  const steps = [
+    {
+      number: 1,
+      title: 'Open YouTube History',
+      description: 'Go to your YouTube watch history page',
+      action: (
+        <a
+          href="https://www.youtube.com/feed/history"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="step-btn"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Open YouTube History
+          <span className="btn-icon">→</span>
+        </a>
+      ),
+    },
+    {
+      number: 2,
+      title: 'Open Browser Console',
+      description: (
+        <>
+          Press <kbd>F12</kbd> then click the <strong>Console</strong> tab
+          <div className="keyboard-hint">
+            Mac: <kbd>Cmd</kbd> + <kbd>Option</kbd> + <kbd>J</kbd>
+          </div>
+        </>
+      ),
+    },
+    {
+      number: 3,
+      title: 'Run the Script',
+      description: 'Paste the script and press Enter',
+      action: (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCopy();
+          }}
+          className={`step-btn ${copied ? 'copied' : ''}`}
+        >
+          {copied ? (
+            <>
+              <span className="btn-check">✓</span>
+              Copied!
+            </>
+          ) : (
+            <>
+              <span className="btn-icon">📋</span>
+              Copy Script
+            </>
+          )}
+        </button>
+      ),
+      note: 'This may take a few minutes depending on your history size.',
+    },
+    {
+      number: 4,
+      title: 'Upload the File',
+      description: 'The JSON file will auto-download when complete. Upload it above.',
+    },
+  ];
+
   return (
-    <div className="yt-card max-w-2xl mx-auto">
-      <div className="p-4">
-        <div className="text-center mb-4">
-          <h3 className="font-bold text-[14px] text-[var(--yt-black)] mb-1">⚡ Extract Your History</h3>
-          <p className="text-[12px] text-[var(--yt-gray)]">Three quick steps</p>
-        </div>
-
-        {/* Steps */}
-        <div className="space-y-3">
-          {/* Step 1 */}
-          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
-            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
-              1
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-[12px] text-[var(--yt-black)]">Open YouTube History</div>
-              <a
-                href="https://www.youtube.com/feed/history"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="yt-btn yt-btn-primary mt-2"
-              >
-                Open YouTube History →
-              </a>
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
-            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
-              2
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-[12px] text-[var(--yt-black)]">Open browser console</div>
-              <p className="text-[11px] text-[var(--yt-gray)] mt-1">
-                Press <code className="bg-[#eee] px-1 py-0.5 rounded text-[var(--yt-black)]">F12</code> then click the <strong>Console</strong> tab
-              </p>
-              <p className="text-[10px] text-[var(--yt-gray)] mt-1">
-                Mac: <code className="bg-[#eee] px-1 py-0.5 rounded">Cmd+Option+J</code>
-              </p>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
-            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
-              3
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-[12px] text-[var(--yt-black)]">Paste script and press Enter</div>
-              <button
-                onClick={handleCopy}
-                className={`yt-btn mt-2 w-full ${copied ? 'yt-btn-success' : 'yt-btn-primary'}`}
-              >
-                {copied ? '✓ Copied to Clipboard!' : '📋 Copy Script'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Info note */}
-        <div className="mt-4 p-2 bg-[#e8f5e9] border border-[#c8e6c9] rounded text-[11px] text-[var(--yt-gray)]">
-          <strong>💾 Auto-save:</strong> Progress saves automatically. Every ~5000 videos, the page refreshes to prevent crashes — just paste the script again to continue.
-        </div>
-
-        {/* View script link */}
-        <div className="mt-3 text-center">
-          <button
-            onClick={() => setShowScript(!showScript)}
-            className="text-[11px] text-[var(--yt-link)] hover:underline"
+    <div className="browser-extract">
+      <div className="steps-container">
+        {steps.map((step, idx) => (
+          <div
+            key={step.number}
+            className={`step-card ${expandedStep === idx ? 'expanded' : ''}`}
+            style={{ animationDelay: `${idx * 100}ms` }}
           >
-            {showScript ? 'Hide script' : 'View script before running'}
-          </button>
-        </div>
+            <div
+              className="step-header"
+              onClick={() => setExpandedStep(expandedStep === idx ? null : idx)}
+            >
+              <div className="step-number">{step.number}</div>
+              <div className="step-title">{step.title}</div>
+              <div className="step-chevron">{expandedStep === idx ? '−' : '+'}</div>
+            </div>
 
-        {showScript && (
-          <pre className="mt-2 p-3 bg-[#f5f5f5] border border-[#ddd] text-[10px] text-[var(--yt-gray-dark)] overflow-x-auto max-h-[200px] overflow-y-auto">
-            {EXTRACT_SCRIPT}
-          </pre>
-        )}
+            <div className="step-body">
+              <div className="step-description">{step.description}</div>
+              {step.action && <div className="step-action">{step.action}</div>}
+              {step.note && <div className="step-note">{step.note}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
 
-        {/* Commands reference */}
-        <div className="mt-3 pt-3 border-t border-[#eee] text-[10px] text-[var(--yt-gray)]">
-          <strong>Console commands:</strong> <code className="bg-[#f0f0f0] px-1">stop()</code> pause, <code className="bg-[#f0f0f0] px-1">download()</code> get file, <code className="bg-[#f0f0f0] px-1">clear()</code> reset
+      <div className="script-toggle">
+        <button onClick={() => setShowScript(!showScript)} className="toggle-btn">
+          {showScript ? 'Hide script' : 'View script before running'}
+        </button>
+      </div>
+
+      {showScript && (
+        <div className="script-preview">
+          <pre>{API_SCRIPT}</pre>
         </div>
+      )}
+
+      <div className="commands-hint">
+        <span className="hint-label">Console commands:</span>
+        <code>stop()</code>
+        <span className="hint-separator">•</span>
+        <code>status()</code>
       </div>
     </div>
   );

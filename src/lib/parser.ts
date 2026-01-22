@@ -1,25 +1,30 @@
-import { WatchHistoryEntry, ParsedStats, ChannelStats, ContentStats } from '../types';
+import { WatchHistoryEntry, ParsedStats, ChannelStats } from '../types';
 
-const AVERAGE_VIDEO_DURATION_MINUTES = 10;
-const AVERAGE_SHORT_DURATION_MINUTES = 0.5; // 30 seconds average for shorts
+const AVERAGE_VIDEO_DURATION_MINUTES = 12;
+const AVERAGE_SHORT_DURATION_MINUTES = 0.5; // 30 seconds
 
-function isShort(url: string): boolean {
-  return url.includes('/shorts/');
-}
-
-function processEntries(
-  entries: WatchHistoryEntry[],
-  avgDuration: number
-): ContentStats {
-  const channelMap = new Map<string, { name: string; url: string; count: number }>();
+export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
+  const channelMap = new Map<string, { name: string; url: string; count: number; avatar?: string }>();
+  const videoChannelMap = new Map<string, { name: string; url: string; count: number; avatar?: string }>();
+  const shortsChannelMap = new Map<string, { name: string; url: string; count: number; avatar?: string }>();
   let oldestDate: Date | null = null;
   let newestDate: Date | null = null;
-  let validCount = 0;
+  let videoCount = 0;
+  let shortsCount = 0;
 
-  for (const entry of entries) {
-    validCount++;
+  for (const entry of data) {
+    if (entry.header !== 'YouTube') continue;
+    if (!entry.titleUrl || !entry.title.startsWith('Watched ')) continue;
 
-    // Parse the timestamp
+    // Determine type: use explicit type field, or fallback to URL detection
+    const isShort = entry.type === 'short' || entry.titleUrl.includes('/shorts/');
+
+    if (isShort) {
+      shortsCount++;
+    } else {
+      videoCount++;
+    }
+
     const watchDate = new Date(entry.time);
     if (!isNaN(watchDate.getTime())) {
       if (!oldestDate || watchDate < oldestDate) {
@@ -30,64 +35,90 @@ function processEntries(
       }
     }
 
-    // Extract channel info
-    if (entry.subtitles && entry.subtitles.length > 0) {
+    if (entry.subtitles && entry.subtitles.length > 0 && entry.subtitles[0].name) {
       const channel = entry.subtitles[0];
-      const existing = channelMap.get(channel.url);
+      const key = channel.name.toLowerCase();
+      const avatar = channel.avatar;
 
+      // Add to combined map
+      const existing = channelMap.get(key);
       if (existing) {
         existing.count++;
+        if (avatar && !existing.avatar) existing.avatar = avatar;
       } else {
-        channelMap.set(channel.url, {
-          name: channel.name,
-          url: channel.url,
-          count: 1,
-        });
+        channelMap.set(key, { name: channel.name, url: channel.url, count: 1, avatar });
+      }
+
+      // Add to type-specific map
+      const typeMap = isShort ? shortsChannelMap : videoChannelMap;
+      const typeExisting = typeMap.get(key);
+      if (typeExisting) {
+        typeExisting.count++;
+        if (avatar && !typeExisting.avatar) typeExisting.avatar = avatar;
+      } else {
+        typeMap.set(key, { name: channel.name, url: channel.url, count: 1, avatar });
       }
     }
   }
 
-  // Convert channel map to sorted array
   const channelStats: ChannelStats[] = Array.from(channelMap.values())
     .map(ch => ({
       name: ch.name,
       url: ch.url,
       watchCount: ch.count,
-      estimatedHours: (ch.count * avgDuration) / 60,
+      estimatedHours: (ch.count * AVERAGE_VIDEO_DURATION_MINUTES) / 60,
+      avatarUrl: ch.avatar,
     }))
     .sort((a, b) => b.watchCount - a.watchCount);
 
-  const totalEstimatedHours = (validCount * avgDuration) / 60;
+  const videoChannelStats: ChannelStats[] = Array.from(videoChannelMap.values())
+    .map(ch => ({
+      name: ch.name,
+      url: ch.url,
+      watchCount: ch.count,
+      estimatedHours: (ch.count * AVERAGE_VIDEO_DURATION_MINUTES) / 60,
+      avatarUrl: ch.avatar,
+    }))
+    .sort((a, b) => b.watchCount - a.watchCount);
 
-  return {
-    totalVideos: validCount,
-    totalEstimatedHours,
-    oldestWatchDate: oldestDate,
-    newestWatchDate: newestDate,
-    channelStats,
-  };
-}
+  const shortsChannelStats: ChannelStats[] = Array.from(shortsChannelMap.values())
+    .map(ch => ({
+      name: ch.name,
+      url: ch.url,
+      watchCount: ch.count,
+      estimatedHours: (ch.count * AVERAGE_SHORT_DURATION_MINUTES) / 60,
+      avatarUrl: ch.avatar,
+    }))
+    .sort((a, b) => b.watchCount - a.watchCount);
 
-export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
-  const longFormEntries: WatchHistoryEntry[] = [];
-  const shortsEntries: WatchHistoryEntry[] = [];
+  const totalVideos = videoCount + shortsCount;
+  const videoEstimatedHours = (videoCount * AVERAGE_VIDEO_DURATION_MINUTES) / 60;
+  const shortsEstimatedHours = (shortsCount * AVERAGE_SHORT_DURATION_MINUTES) / 60;
 
-  for (const entry of data) {
-    // Skip non-YouTube entries or entries without proper data
-    if (entry.header !== 'YouTube') continue;
-    if (!entry.titleUrl || !entry.title.startsWith('Watched ')) continue;
-
-    // Separate by content type
-    if (isShort(entry.titleUrl)) {
-      shortsEntries.push(entry);
-    } else {
-      longFormEntries.push(entry);
+  // Check if dates have meaningful range (more than 1 day apart)
+  // If all dates are within 1 day, they're likely scrape timestamps, not actual watch dates
+  let meaningfulOldestDate: Date | null = null;
+  if (oldestDate && newestDate) {
+    const diffMs = newestDate.getTime() - oldestDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays > 1) {
+      meaningfulOldestDate = oldestDate;
     }
   }
 
   return {
-    longForm: processEntries(longFormEntries, AVERAGE_VIDEO_DURATION_MINUTES),
-    shorts: processEntries(shortsEntries, AVERAGE_SHORT_DURATION_MINUTES),
+    totalVideos,
+    videoCount,
+    shortsCount,
+    totalEstimatedHours: videoEstimatedHours + shortsEstimatedHours,
+    videoEstimatedHours,
+    shortsEstimatedHours,
+    videoChannelCount: videoChannelMap.size,
+    shortsChannelCount: shortsChannelMap.size,
+    oldestWatchDate: meaningfulOldestDate,
+    channelStats,
+    videoChannelStats,
+    shortsChannelStats,
   };
 }
 

@@ -1,18 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ContentStats } from '../types';
+import { ParsedStats, ChannelStats } from '../types';
 import { formatDuration, formatDate, calculateAccountAge } from '../lib/parser';
 
 interface ContentSectionProps {
-  stats: ContentStats;
-  type: 'longForm' | 'shorts';
+  stats: ParsedStats;
 }
 
-function AnimatedNumber({ value }: { value: number }) {
+function AnimatedNumber({ value, duration = 1500 }: { value: number; duration?: number }) {
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
     const startTime = Date.now();
-    const duration = 1000;
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -24,158 +22,320 @@ function AnimatedNumber({ value }: { value: number }) {
     };
 
     requestAnimationFrame(animate);
-  }, [value]);
+  }, [value, duration]);
 
   return <span>{Math.round(displayValue).toLocaleString()}</span>;
 }
 
-export function ContentSection({ stats, type }: ContentSectionProps) {
-  const [visibleCount, setVisibleCount] = useState(15);
-  const [searchQuery, setSearchQuery] = useState('');
+interface StatCardProps {
+  value: string | number;
+  label: string;
+  sublabel?: string;
+  gradient: string;
+  delay: number;
+  isNumber?: boolean;
+}
 
-  const isShorts = type === 'shorts';
-  const itemLabel = isShorts ? 'shorts' : 'videos';
+function StatCard({ value, label, sublabel, gradient, delay, isNumber = false }: StatCardProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(timer);
+  }, [delay]);
+
+  return (
+    <div
+      className={`stat-card ${gradient} ${visible ? 'visible' : ''}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <div className="stat-value">
+        {isNumber ? <AnimatedNumber value={value as number} duration={2000} /> : value}
+      </div>
+      <div className="stat-label">{label}</div>
+      {sublabel && <div className="stat-sublabel">{sublabel}</div>}
+    </div>
+  );
+}
+
+interface TopChannelCardProps {
+  channel: ChannelStats;
+  rank: number;
+  total: number;
+  delay: number;
+  accentColor: string;
+}
+
+function TopChannelCard({ channel, rank, total, delay, accentColor }: TopChannelCardProps) {
+  const [visible, setVisible] = useState(false);
+  const percentage = ((channel.watchCount / total) * 100).toFixed(1);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(timer);
+  }, [delay]);
+
+  const medals = ['', '🥇', '🥈', '🥉'];
+
+  // Generate initials for fallback avatar
+  const initials = channel.name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <div className={`top-channel-card ${visible ? 'visible' : ''}`} style={{ transitionDelay: `${delay}ms` }}>
+      {channel.avatarUrl ? (
+        <img
+          src={channel.avatarUrl}
+          alt={channel.name}
+          className="channel-avatar"
+          onError={(e) => {
+            // Fallback to initials on error
+            e.currentTarget.style.display = 'none';
+            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+          }}
+        />
+      ) : null}
+      <div
+        className={`channel-avatar-fallback ${channel.avatarUrl ? 'hidden' : ''}`}
+        style={{ background: accentColor }}
+      >
+        {rank <= 3 ? medals[rank] : initials}
+      </div>
+      <div className="channel-info">
+        <div className="channel-name">{channel.name}</div>
+        <div className="channel-stats">
+          <span className="watch-count">{channel.watchCount.toLocaleString()} watched</span>
+          <span className="watch-time">{formatDuration(channel.estimatedHours)}</span>
+        </div>
+        <div className="channel-bar-container">
+          <div
+            className="channel-bar"
+            style={{
+              width: visible ? `${Math.min(parseFloat(percentage) * 3, 100)}%` : '0%',
+              background: accentColor
+            }}
+          />
+        </div>
+      </div>
+      <div className="channel-percentage" style={{ color: accentColor }}>{percentage}%</div>
+    </div>
+  );
+}
+
+interface CategorySectionProps {
+  title: string;
+  emoji: string;
+  count: number;
+  hours: number;
+  channelCount: number;
+  channelStats: ChannelStats[];
+  gradientClass: string;
+  accentColor: string;
+  baseDelay: number;
+}
+
+function CategorySection({
+  title,
+  emoji,
+  count,
+  hours,
+  channelCount,
+  channelStats,
+  gradientClass,
+  accentColor,
+  baseDelay
+}: CategorySectionProps) {
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expanded, setExpanded] = useState(false);
 
   const filteredChannels = useMemo(() => {
-    if (!searchQuery) return stats.channelStats;
+    if (!searchQuery) return channelStats;
     const query = searchQuery.toLowerCase();
-    return stats.channelStats.filter(ch => ch.name.toLowerCase().includes(query));
-  }, [stats.channelStats, searchQuery]);
+    return channelStats.filter(ch => ch.name.toLowerCase().includes(query));
+  }, [channelStats, searchQuery]);
 
   const visibleChannels = filteredChannels.slice(0, visibleCount);
   const hasMore = visibleCount < filteredChannels.length;
 
+  if (count === 0) return null;
+
+  return (
+    <div className="category-section">
+      {/* Hero Stats */}
+      <div className={`category-hero ${gradientClass}`}>
+        <div className="category-title">
+          <span className="category-emoji">{emoji}</span>
+          <span>{title}</span>
+        </div>
+
+        <div className="hero-stats">
+          <StatCard
+            value={count}
+            label="watched"
+            gradient="stat-gradient-1"
+            delay={baseDelay}
+            isNumber
+          />
+          <StatCard
+            value={formatDuration(hours)}
+            label="time spent"
+            gradient="stat-gradient-2"
+            delay={baseDelay + 100}
+          />
+          {channelCount > 0 && (
+            <StatCard
+              value={channelCount}
+              label="creators"
+              gradient="stat-gradient-3"
+              delay={baseDelay + 200}
+              isNumber
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Top Channels */}
+      {channelStats.length > 0 && (
+        <div className="top-channels-section">
+          <div className="section-header">
+            <span className="header-icon">🏆</span>
+            <span>Your Top Creators</span>
+          </div>
+
+          <div className="top-channels-list">
+            {channelStats.slice(0, 10).map((channel, idx) => (
+              <TopChannelCard
+                key={channel.name}
+                channel={channel}
+                rank={idx + 1}
+                total={count}
+                delay={baseDelay + 300 + idx * 100}
+                accentColor={accentColor}
+              />
+            ))}
+          </div>
+
+          {/* Expandable Channel Explorer */}
+          <div className={`channel-explorer ${expanded ? 'expanded' : ''}`}>
+            <button
+              className="explorer-toggle"
+              onClick={() => setExpanded(!expanded)}
+            >
+              <span>{expanded ? 'Hide' : 'Explore'} all {channelStats.length.toLocaleString()} channels</span>
+              <span className={`toggle-arrow ${expanded ? 'up' : ''}`}>↓</span>
+            </button>
+
+            {expanded && (
+              <div className="explorer-content">
+                <div className="search-bar">
+                  <input
+                    type="text"
+                    placeholder="Search channels..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                  <span className="search-icon">🔍</span>
+                </div>
+
+                <div className="channels-grid">
+                  {visibleChannels.map((channel, idx) => {
+                    const rank = channelStats.indexOf(channel) + 1;
+                    return (
+                      <div key={`${channel.name}-${rank}`} className="channel-item">
+                        <span className="item-rank">#{rank}</span>
+                        <span className="item-name">{channel.name}</span>
+                        <span className="item-count">{channel.watchCount.toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {hasMore && (
+                  <button
+                    className="load-more-btn"
+                    onClick={() => setVisibleCount(c => c + 20)}
+                  >
+                    Show more ({filteredChannels.length - visibleCount} remaining)
+                  </button>
+                )}
+
+                {filteredChannels.length === 0 && searchQuery && (
+                  <div className="no-results">No channels match "{searchQuery}"</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ContentSection({ stats }: ContentSectionProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (stats.totalVideos === 0) {
     return (
-      <div className="p-8 text-center text-[var(--yt-gray)]">
-        <p className="text-[14px]">No {itemLabel} found in your history</p>
+      <div className="empty-state">
+        <div className="empty-icon">📭</div>
+        <p>No videos found in your history</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 border-b border-[var(--yt-gray-border)]">
-        <div className="yt-stat-box border-r border-b border-[var(--yt-gray-border)]">
-          <span className="yt-stat-value">
-            <AnimatedNumber value={stats.totalVideos} />
-          </span>
-          <span className="yt-stat-label">{itemLabel} watched</span>
+    <div className={`rewind-container ${mounted ? 'mounted' : ''}`}>
+      {/* Grand Total Hero */}
+      <div className="total-hero">
+        <div className="total-badge">YOUR YOUTUBE REWIND</div>
+        <div className="total-number">
+          <AnimatedNumber value={stats.totalVideos} duration={2500} />
         </div>
-        <div className="yt-stat-box border-b border-[var(--yt-gray-border)]">
-          <span className="yt-stat-value">{formatDuration(stats.totalEstimatedHours)}</span>
-          <span className="yt-stat-label">time watched</span>
-        </div>
-        <div className="yt-stat-box border-r border-[var(--yt-gray-border)]">
-          <span className="yt-stat-value">
-            <AnimatedNumber value={stats.channelStats.length} />
-          </span>
-          <span className="yt-stat-label">channels</span>
-        </div>
-        <div className="yt-stat-box">
-          <span className="yt-stat-value text-[20px]">
-            {stats.oldestWatchDate ? calculateAccountAge(stats.oldestWatchDate) : 'N/A'}
-          </span>
-          <span className="yt-stat-label">history span</span>
-          {stats.oldestWatchDate && (
-            <span className="yt-stat-sub">Since {formatDate(stats.oldestWatchDate)}</span>
-          )}
-        </div>
-      </div>
+        <div className="total-label">total videos & shorts watched</div>
+        <div className="total-time">{formatDuration(stats.totalEstimatedHours)} of your life</div>
 
-      {/* Top Channel */}
-      {stats.channelStats.length > 0 && (
-        <div className="p-3 border-b border-[var(--yt-gray-border)] bg-[#fffde7]">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="yt-trophy">🏆</span>
-            <span className="text-[11px] font-bold text-[var(--yt-gray)] uppercase">
-              Most Watched Channel
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <a
-                href={stats.channelStats[0].url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[var(--yt-link)] font-bold text-[13px] hover:underline block truncate"
-              >
-                {stats.channelStats[0].name}
-              </a>
-            </div>
-            <div className="text-right ml-4 flex-shrink-0">
-              <div className="font-bold text-[14px]">{stats.channelStats[0].watchCount.toLocaleString()} {itemLabel}</div>
-              <div className="text-[10px] text-[var(--yt-gray)]">{formatDuration(stats.channelStats[0].estimatedHours)}</div>
-            </div>
-          </div>
-          <div className="mt-2 yt-progress">
-            <div
-              className={`yt-progress-fill ${isShorts ? 'shorts' : ''}`}
-              style={{ width: `${(stats.channelStats[0].watchCount / stats.totalVideos) * 100}%` }}
-            />
-          </div>
-          <div className="text-[10px] text-[var(--yt-gray)] mt-1 text-right">
-            {((stats.channelStats[0].watchCount / stats.totalVideos) * 100).toFixed(1)}% of your {itemLabel}
-          </div>
-        </div>
-      )}
-
-      {/* Search */}
-      <div className="p-3 border-b border-[var(--yt-gray-border)] flex items-center justify-between bg-[#fafafa]">
-        <span className="text-[11px] font-bold text-[var(--yt-gray)] uppercase">
-          All Channels ({filteredChannels.length})
-        </span>
-        <input
-          type="text"
-          placeholder="Search channels..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="yt-input w-[140px] text-[11px]"
-        />
-      </div>
-
-      {/* Channel List */}
-      <div className="max-h-[300px] overflow-y-auto">
-        {visibleChannels.map((channel) => {
-          const rank = stats.channelStats.indexOf(channel) + 1;
-          const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
-
-          return (
-            <div key={channel.url} className="yt-channel-item">
-              <div className={`yt-channel-rank ${rankClass}`}>
-                {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
-              </div>
-              <div className="yt-channel-name">
-                <a href={channel.url} target="_blank" rel="noopener noreferrer">
-                  {channel.name}
-                </a>
-              </div>
-              <div className="yt-channel-meta">
-                <div className="yt-channel-count">{channel.watchCount.toLocaleString()}</div>
-                <div className="yt-channel-time">{formatDuration(channel.estimatedHours)}</div>
-              </div>
-            </div>
-          );
-        })}
-
-        {hasMore && (
-          <div className="p-3 text-center border-t border-[#eee]">
-            <button
-              onClick={() => setVisibleCount(c => c + 20)}
-              className="yt-btn"
-            >
-              Show More ({filteredChannels.length - visibleCount} remaining)
-            </button>
-          </div>
-        )}
-
-        {filteredChannels.length === 0 && (
-          <div className="p-6 text-center text-[var(--yt-gray)]">
-            No channels match "{searchQuery}"
+        {stats.oldestWatchDate && (
+          <div className="history-badge">
+            <span className="history-icon">📅</span>
+            <span>History since {formatDate(stats.oldestWatchDate)}</span>
           </div>
         )}
       </div>
+
+      {/* Videos Section */}
+      <CategorySection
+        title="Videos"
+        emoji="🎬"
+        count={stats.videoCount}
+        hours={stats.videoEstimatedHours}
+        channelCount={stats.videoChannelCount}
+        channelStats={stats.videoChannelStats}
+        gradientClass="gradient-videos"
+        accentColor="#FF6B6B"
+        baseDelay={400}
+      />
+
+      {/* Shorts Section */}
+      <CategorySection
+        title="Shorts"
+        emoji="⚡"
+        count={stats.shortsCount}
+        hours={stats.shortsEstimatedHours}
+        channelCount={stats.shortsChannelCount}
+        channelStats={stats.shortsChannelStats}
+        gradientClass="gradient-shorts"
+        accentColor="#4ECDC4"
+        baseDelay={800}
+      />
     </div>
   );
 }

@@ -9,41 +9,45 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [fileCount, setFileCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const processFile = async (file: File) => {
+  const processFiles = async (files: FileList) => {
     setError(null);
     setIsLoading(true);
+    setFileCount(files.length);
 
-    if (!file.name.endsWith('.json')) {
-      setError('Please upload a JSON file');
-      setIsLoading(false);
-      return;
-    }
+    const allEntries: WatchHistoryEntry[] = [];
+    const seenUrls = new Set<string>();
 
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
+      for (const file of Array.from(files)) {
+        if (!file.name.endsWith('.json')) continue;
 
-      if (!Array.isArray(data)) {
-        setError('Invalid format: Expected an array of watch history entries');
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!Array.isArray(data)) continue;
+
+        for (const entry of data) {
+          if (entry.header === 'YouTube' && entry.titleUrl) {
+            if (!seenUrls.has(entry.titleUrl)) {
+              seenUrls.add(entry.titleUrl);
+              allEntries.push(entry);
+            }
+          }
+        }
+      }
+
+      if (allEntries.length === 0) {
+        setError('No valid YouTube watch history found in the uploaded files');
         setIsLoading(false);
         return;
       }
 
-      const hasYouTubeEntries = data.some(
-        (entry: WatchHistoryEntry) => entry.header === 'YouTube'
-      );
-
-      if (!hasYouTubeEntries) {
-        setError('This doesn\'t appear to be YouTube watch history data');
-        setIsLoading(false);
-        return;
-      }
-
-      onDataLoaded(data);
+      onDataLoaded(allEntries);
     } catch {
-      setError('Failed to parse JSON file. Make sure it\'s valid JSON.');
+      setError('Failed to parse JSON files. Make sure they\'re valid JSON.');
     } finally {
       setIsLoading(false);
     }
@@ -65,14 +69,14 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      processFile(files[0]);
+      processFiles(files);
     }
   };
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      processFile(files[0]);
+      processFiles(files);
     }
   };
 
@@ -81,9 +85,9 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="uploader-container">
       <div
-        className={`yt-upload-zone ${isDragging ? 'active' : ''}`}
+        className={`upload-zone ${isDragging ? 'dragging' : ''} ${isLoading ? 'loading' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -93,31 +97,50 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
           ref={fileInputRef}
           type="file"
           accept=".json"
+          multiple
           onChange={handleFileSelect}
           className="hidden"
         />
 
-        {isLoading ? (
-          <div className="space-y-3">
-            <div className="yt-upload-icon">⏳</div>
-            <p className="yt-upload-text">Processing your data...</p>
-            <p className="yt-upload-subtext">This may take a moment for large files</p>
-          </div>
-        ) : (
-          <>
-            <div className="yt-upload-icon">📁</div>
-            <p className="yt-upload-text">Drop your watch-history.json file here</p>
-            <p className="yt-upload-subtext">or click to browse your files</p>
-            <button className="yt-btn yt-btn-primary mt-4">
-              Select File
-            </button>
-          </>
-        )}
+        <div className="upload-content">
+          {isLoading ? (
+            <>
+              <div className="upload-icon spinning">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                  <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="upload-title">Processing {fileCount} file{fileCount > 1 ? 's' : ''}...</div>
+              <div className="upload-subtitle">Merging and deduplicating entries</div>
+            </>
+          ) : (
+            <>
+              <div className="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M12 16V4m0 0L8 8m4-4l4 4" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 16v2a2 2 0 002 2h14a2 2 0 002-2v-2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div className="upload-title">Drop your watch-history.json here</div>
+              <div className="upload-subtitle">or click to browse</div>
+              <div className="upload-hint">
+                <code>watch-history.json</code>
+              </div>
+              <button type="button" className="upload-btn">
+                Select Files
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="upload-glow" />
       </div>
 
       {error && (
-        <div className="mt-3 p-3 bg-[#fff0f0] border border-[var(--yt-red)] text-[var(--yt-red)] text-[12px]">
-          <strong>Error:</strong> {error}
+        <div className="upload-error">
+          <span className="error-icon">⚠️</span>
+          <span>{error}</span>
         </div>
       )}
     </div>
