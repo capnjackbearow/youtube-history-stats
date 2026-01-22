@@ -201,12 +201,9 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
   delete window.clear;
 })();`;
 
-// Create minified bookmarklet
-const BOOKMARKLET = `javascript:(function(){${encodeURIComponent(EXTRACT_SCRIPT.replace(/\s+/g, ' '))}})()`;
-
 export function BrowserExtract() {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showScript, setShowScript] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -227,42 +224,21 @@ export function BrowserExtract() {
 
   return (
     <div className="yt-card max-w-2xl mx-auto">
-      {/* Main Extract Section */}
       <div className="p-4">
         <div className="text-center mb-4">
-          <h3 className="font-bold text-[14px] text-[var(--yt-black)] mb-1">⚡ Quick Extract</h3>
-          <p className="text-[12px] text-[var(--yt-gray)]">Two simple steps to get your watch history</p>
-          <p className="text-[11px] text-[var(--yt-gray)] mt-1">Progress auto-saves — close anytime and continue later</p>
+          <h3 className="font-bold text-[14px] text-[var(--yt-black)] mb-1">⚡ Extract Your History</h3>
+          <p className="text-[12px] text-[var(--yt-gray)]">Three quick steps</p>
         </div>
 
-        {/* Two-step process */}
-        <div className="space-y-3 mb-4">
-          {/* Step 1: Drag bookmarklet */}
+        {/* Steps */}
+        <div className="space-y-3">
+          {/* Step 1 */}
           <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
             <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
               1
             </div>
             <div className="flex-1">
-              <div className="font-bold text-[12px] text-[var(--yt-black)]">Drag this to your bookmarks bar:</div>
-              <a
-                href={BOOKMARKLET}
-                onClick={(e) => e.preventDefault()}
-                draggable="true"
-                className="yt-btn yt-btn-primary mt-2 cursor-move"
-              >
-                📺 Extract YT History
-              </a>
-              <p className="text-[10px] text-[var(--yt-gray)] mt-1">Drag the button above to your bookmarks bar (one-time setup)</p>
-            </div>
-          </div>
-
-          {/* Step 2: Go to YouTube and click */}
-          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
-            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
-              2
-            </div>
-            <div className="flex-1">
-              <div className="font-bold text-[12px] text-[var(--yt-black)]">Open YouTube History, then click the bookmarklet</div>
+              <div className="font-bold text-[12px] text-[var(--yt-black)]">Open YouTube History</div>
               <a
                 href="https://www.youtube.com/feed/history"
                 target="_blank"
@@ -271,78 +247,66 @@ export function BrowserExtract() {
               >
                 Open YouTube History →
               </a>
-              <p className="text-[10px] text-[var(--yt-gray)] mt-1">Click the bookmarklet to start. Progress auto-saves — run again anytime to continue.</p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
+            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
+              2
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[12px] text-[var(--yt-black)]">Open browser console</div>
+              <p className="text-[11px] text-[var(--yt-gray)] mt-1">
+                Press <code className="bg-[#eee] px-1 py-0.5 rounded text-[var(--yt-black)]">F12</code> then click the <strong>Console</strong> tab
+              </p>
+              <p className="text-[10px] text-[var(--yt-gray)] mt-1">
+                Mac: <code className="bg-[#eee] px-1 py-0.5 rounded">Cmd+Option+J</code>
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
+            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
+              3
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[12px] text-[var(--yt-black)]">Paste script and press Enter</div>
+              <button
+                onClick={handleCopy}
+                className={`yt-btn mt-2 w-full ${copied ? 'yt-btn-success' : 'yt-btn-primary'}`}
+              >
+                {copied ? '✓ Copied to Clipboard!' : '📋 Copy Script'}
+              </button>
             </div>
           </div>
         </div>
 
         {/* Info note */}
-        <div className="px-4 pb-4 text-[11px] text-[var(--yt-gray)]">
-          <div className="p-2 bg-[#e8f5e9] border border-[#c8e6c9] rounded">
-            <strong>💾 Auto-save:</strong> Progress saves frequently. Every ~3000 videos, the page auto-refreshes to prevent crashes — just click the bookmarklet again to continue.
-          </div>
+        <div className="mt-4 p-2 bg-[#e8f5e9] border border-[#c8e6c9] rounded text-[11px] text-[var(--yt-gray)]">
+          <strong>💾 Auto-save:</strong> Progress saves automatically. Every ~3000 videos, the page refreshes to prevent crashes — just paste the script again to continue.
         </div>
-      </div>
 
-      {/* Expandable manual method */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="yt-expand-header w-full border-t border-[var(--yt-gray-border)]"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] text-[var(--yt-gray)]">Alternative: Manual console method</span>
+        {/* View script link */}
+        <div className="mt-3 text-center">
+          <button
+            onClick={() => setShowScript(!showScript)}
+            className="text-[11px] text-[var(--yt-link)] hover:underline"
+          >
+            {showScript ? 'Hide script' : 'View script before running'}
+          </button>
         </div>
-        <span className={`yt-expand-arrow ${isExpanded ? 'open' : ''}`}>▼</span>
-      </button>
 
-      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[700px]' : 'max-h-0'}`}>
-        <div className="p-4 border-t border-[var(--yt-gray-border)] bg-[#fafafa]">
-          <div className="space-y-3">
-            <div className="flex gap-3 items-start">
-              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">1</div>
-              <div className="text-[11px]">
-                <span className="font-bold">Open </span>
-                <a href="https://www.youtube.com/feed/history" target="_blank" rel="noopener noreferrer" className="text-[var(--yt-link)] hover:underline">youtube.com/feed/history</a>
-              </div>
-            </div>
-            <div className="flex gap-3 items-start">
-              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">2</div>
-              <div className="text-[11px]"><span className="font-bold">Open DevTools:</span> F12 or Cmd+Option+J</div>
-            </div>
-            <div className="flex gap-3 items-start">
-              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">3</div>
-              <div className="text-[11px]"><span className="font-bold">Go to Console tab</span></div>
-            </div>
-            <div className="flex gap-3 items-start">
-              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">4</div>
-              <div className="flex-1">
-                <span className="text-[11px] font-bold">Paste script & run</span>
-                <button
-                  onClick={handleCopy}
-                  className={`yt-btn mt-2 w-full ${
-                    copied ? 'yt-btn-success' : ''
-                  }`}
-                >
-                  {copied ? '✓ Copied!' : '📋 Copy Script'}
-                </button>
-              </div>
-            </div>
-          </div>
+        {showScript && (
+          <pre className="mt-2 p-3 bg-[#f5f5f5] border border-[#ddd] text-[10px] text-[var(--yt-gray-dark)] overflow-x-auto max-h-[200px] overflow-y-auto">
+            {EXTRACT_SCRIPT}
+          </pre>
+        )}
 
-          {/* Script preview */}
-          <details className="mt-4 pt-3 border-t border-[#eee]">
-            <summary className="cursor-pointer text-[11px] text-[var(--yt-link)] hover:underline">
-              View full script
-            </summary>
-            <pre className="mt-2 p-3 bg-[#f5f5f5] border border-[#ddd] text-[10px] text-[var(--yt-gray-dark)] overflow-x-auto max-h-[150px] overflow-y-auto">
-              {EXTRACT_SCRIPT}
-            </pre>
-          </details>
-
-          {/* Commands */}
-          <div className="mt-3 pt-3 border-t border-[#eee] text-[10px] text-[var(--yt-gray)]">
-            <strong>Commands:</strong> <code className="bg-[#f0f0f0] px-1">stop()</code> pause & save, <code className="bg-[#f0f0f0] px-1">download()</code> get JSON, <code className="bg-[#f0f0f0] px-1">clear()</code> start fresh
-          </div>
+        {/* Commands reference */}
+        <div className="mt-3 pt-3 border-t border-[#eee] text-[10px] text-[var(--yt-gray)]">
+          <strong>Console commands:</strong> <code className="bg-[#f0f0f0] px-1">stop()</code> pause, <code className="bg-[#f0f0f0] px-1">download()</code> get file, <code className="bg-[#f0f0f0] px-1">clear()</code> reset
         </div>
       </div>
     </div>
