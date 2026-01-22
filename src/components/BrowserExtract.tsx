@@ -152,6 +152,12 @@ const API_SCRIPT = `(async function() {
   var topVideos = Object.values(videoChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
   var topShorts = Object.values(shortsChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
 
+  // Debug: show top video channels and their URLs
+  console.log('[' + elapsed() + '] Top 10 video channels:');
+  topVideos.forEach(function(c, i) {
+    console.log('  ' + (i+1) + '. ' + c.name + ' (' + c.count + ') - URL: ' + (c.url || 'NONE'));
+  });
+
   // Combine and dedupe by URL
   var urlSet = {};
   var topUrls = [];
@@ -161,7 +167,7 @@ const API_SCRIPT = `(async function() {
       topUrls.push(c.url);
     }
   });
-  console.log('[' + elapsed() + '] Top channels: ' + topVideos.length + ' video, ' + topShorts.length + ' shorts (' + topUrls.length + ' unique URLs)');
+  console.log('[' + elapsed() + '] Channels with URLs: ' + topUrls.length);
 
   var avatars = await getAvatars(topUrls);
   console.log('[' + elapsed() + '] Fetched ' + Object.keys(avatars).length + ' avatars');
