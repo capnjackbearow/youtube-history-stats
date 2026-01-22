@@ -229,7 +229,7 @@ export function BrowserExtract() {
                 href={BOOKMARKLET}
                 onClick={(e) => e.preventDefault()}
                 draggable="true"
-                className="yt-btn mt-2 cursor-move"
+                className="yt-btn yt-btn-primary mt-2 cursor-move"
               >
                 📺 Extract YT History
               </a>
