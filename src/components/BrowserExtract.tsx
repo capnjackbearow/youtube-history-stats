@@ -162,7 +162,6 @@ export function BrowserExtract() {
         <div className="flex items-center gap-3">
           <span className="text-[18px]">⚡</span>
           <span className="font-bold text-[13px]">Instant Extract (Browser Script)</span>
-          <span className="yt-badge bg-[#1a7a1a] text-white ml-2">RECOMMENDED</span>
         </div>
         <span className={`yt-expand-arrow ${isExpanded ? 'open' : ''}`}>▼</span>
       </button>
