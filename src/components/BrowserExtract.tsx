@@ -20,6 +20,7 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const data = JSON.parse(saved);
+        console.log(\`📦 Found \${data.length.toLocaleString()} videos in storage\`);
         let added = 0;
         data.forEach(entry => {
           if (entry.titleUrl && !seen.has(entry.titleUrl)) {
@@ -33,9 +34,15 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
           lastSaveCount = entries.length;
           sessionStart = entries.length;
           return true;
+        } else {
+          console.log('⚠️ All videos already seen, nothing new loaded');
         }
+      } else {
+        console.log('📭 No saved data found in storage');
       }
-    } catch (e) {}
+    } catch (e) {
+      console.log('❌ Error loading saved data:', e);
+    }
     return false;
   };
 
@@ -43,8 +50,16 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
   const saveToStorage = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      // Verify save
+      const verify = localStorage.getItem(STORAGE_KEY);
+      if (verify) {
+        const parsed = JSON.parse(verify);
+        if (parsed.length !== entries.length) {
+          console.log(\`⚠️ Save mismatch: expected \${entries.length}, got \${parsed.length}\`);
+        }
+      }
     } catch (e) {
-      console.log('⚠️ localStorage full, downloading backup...');
+      console.log('⚠️ localStorage full or error:', e);
       download();
     }
   };
@@ -162,14 +177,20 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
     // Check if we need to refresh to prevent crash
     const sessionVideos = entries.length - sessionStart;
     if (sessionVideos >= BATCH_LIMIT) {
-      saveToStorage();
       console.log('');
       console.log(\`⚠️ Collected \${sessionVideos.toLocaleString()} videos this session.\`);
-      console.log(\`💾 Total: \${entries.length.toLocaleString()} videos saved.\`);
+      console.log(\`💾 Saving \${entries.length.toLocaleString()} total videos to storage...\`);
+      saveToStorage();
+      // Double-check save worked
+      const check = localStorage.getItem(STORAGE_KEY);
+      if (check) {
+        const checkData = JSON.parse(check);
+        console.log(\`✅ Verified: \${checkData.length.toLocaleString()} videos in storage\`);
+      }
       console.log('🔄 Refreshing page to free memory...');
       console.log('');
-      console.log('👆 Click the bookmarklet again after refresh!');
-      alert('Refreshing to free memory. Click the bookmarklet again to continue!\\n\\nTotal saved: ' + entries.length.toLocaleString() + ' videos');
+      console.log('👆 Paste the script again after refresh!');
+      alert('Refreshing to free memory. Paste the script again to continue!\\n\\nTotal saved: ' + entries.length.toLocaleString() + ' videos');
       location.reload();
       return;
     }
