@@ -2,6 +2,47 @@ import { useState, useEffect, useMemo } from 'react';
 import { ParsedStats, ChannelStats } from '../types';
 import { formatDuration, formatDate } from '../lib/parser';
 
+// Cache for channel avatars
+const avatarCache = new Map<string, string>();
+
+async function fetchChannelAvatar(channelName: string): Promise<string | null> {
+  const cacheKey = channelName.toLowerCase();
+  if (avatarCache.has(cacheKey)) {
+    return avatarCache.get(cacheKey) || null;
+  }
+
+  try {
+    // Use a CORS proxy to search YouTube for the channel
+    const searchQuery = encodeURIComponent(channelName);
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.youtube.com/results?search_query=${searchQuery}&sp=EgIQAg%253D%253D`)}`;
+
+    const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+
+    const html = await response.text();
+
+    // Look for channel avatar in the response - YouTube includes it in the initial data
+    const avatarMatch = html.match(/"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/);
+    if (avatarMatch && avatarMatch[1]) {
+      const avatarUrl = avatarMatch[1].replace(/\\u0026/g, '&');
+      avatarCache.set(cacheKey, avatarUrl);
+      return avatarUrl;
+    }
+
+    // Alternative pattern
+    const altMatch = html.match(/"channelThumbnailSupportedRenderers":\{"channelThumbnailWithLinkRenderer":\{"thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"/);
+    if (altMatch && altMatch[1]) {
+      const avatarUrl = altMatch[1].replace(/\\u0026/g, '&');
+      avatarCache.set(cacheKey, avatarUrl);
+      return avatarUrl;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface ContentSectionProps {
   stats: ParsedStats;
 }
@@ -68,6 +109,8 @@ interface TopChannelCardProps {
 
 function TopChannelCard({ channel, rank, total, delay, accentColor }: TopChannelCardProps) {
   const [visible, setVisible] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState(false);
   const percentage = ((channel.watchCount / total) * 100).toFixed(1);
 
   useEffect(() => {
@@ -75,13 +118,41 @@ function TopChannelCard({ channel, rank, total, delay, accentColor }: TopChannel
     return () => clearTimeout(timer);
   }, [delay]);
 
+  // Fetch avatar asynchronously
+  useEffect(() => {
+    let cancelled = false;
+    fetchChannelAvatar(channel.name).then(url => {
+      if (!cancelled && url) {
+        setAvatarUrl(url);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [channel.name]);
+
   const medals = ['', '🥇', '🥈', '🥉'];
+
+  // Generate initials for fallback
+  const initials = channel.name
+    .split(/[\s_-]+/)
+    .map(word => word[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className={`top-channel-card ${visible ? 'visible' : ''}`} style={{ transitionDelay: `${delay}ms` }}>
-      <div className="channel-rank" style={{ background: accentColor }}>
-        {rank <= 3 ? medals[rank] : `#${rank}`}
-      </div>
+      {avatarUrl && !avatarError ? (
+        <img
+          src={avatarUrl}
+          alt={channel.name}
+          className="channel-avatar"
+          onError={() => setAvatarError(true)}
+        />
+      ) : (
+        <div className="channel-avatar-fallback" style={{ background: accentColor }}>
+          {rank <= 3 ? medals[rank] : initials}
+        </div>
+      )}
       <div className="channel-info">
         <div className="channel-name">{channel.name}</div>
         <div className="channel-stats">
