@@ -3,7 +3,6 @@ import { useState } from 'react';
 const API_SCRIPT = `(async function() {
   var entries = [];
   var seen = {};
-  var channelAvatars = {};
   var running = true;
   var pageCount = 0;
   var videoCount = 0;
@@ -11,7 +10,6 @@ const API_SCRIPT = `(async function() {
 
   window.stop = function() { running = false; console.log('Stopping...'); };
   window.status = function() { console.log('Total: ' + entries.length + ' (Videos: ' + videoCount + ', Shorts: ' + shortsCount + ') Pages: ' + pageCount); };
-  window.avatars = function() { return channelAvatars; };
 
   var getAuth = async function() {
     var sapisid = document.cookie.split('; ').find(function(c) { return c.startsWith('SAPISID='); })?.split('=')[1];
@@ -39,14 +37,7 @@ const API_SCRIPT = `(async function() {
           var meta = v.metadata?.lockupMetadataViewModel;
           var title = meta?.title?.content || 'Unknown';
           var channel = meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content || '';
-          var avatar = v.contentImage?.collectionThumbnailViewModel?.primaryThumbnail?.thumbnailViewModel?.image?.sources?.[0]?.url || '';
-          if (!avatar) {
-            avatar = meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.avatarViewModel?.image?.sources?.[0]?.url || '';
-          }
-          if (channel && avatar && !channelAvatars[channel.toLowerCase()]) {
-            channelAvatars[channel.toLowerCase()] = avatar;
-          }
-          vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/watch?v=' + id, subtitles: channel ? [{ name: channel, url: '', avatar: avatar }] : [], time: new Date().toISOString(), type: 'video' });
+          vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/watch?v=' + id, subtitles: channel ? [{ name: channel, url: '' }] : [], time: new Date().toISOString(), type: 'video' });
           videoCount++;
         }
       }
@@ -57,15 +48,7 @@ const API_SCRIPT = `(async function() {
         var vid = vr.videoId;
         if (!seen[vid]) {
           seen[vid] = true;
-          var channelName = vr.shortBylineText?.runs?.[0]?.text || '';
-          var avatar = vr.channelThumbnailSupportedRenderers?.channelThumbnailWithLinkRenderer?.thumbnail?.thumbnails?.[0]?.url || '';
-          if (!avatar) {
-            avatar = vr.channelThumbnail?.thumbnails?.[0]?.url || '';
-          }
-          if (channelName && avatar && !channelAvatars[channelName.toLowerCase()]) {
-            channelAvatars[channelName.toLowerCase()] = avatar;
-          }
-          vids.push({ header: 'YouTube', title: 'Watched ' + (vr.title?.runs?.[0]?.text || 'Unknown'), titleUrl: 'https://www.youtube.com/watch?v=' + vid, subtitles: channelName ? [{ name: channelName, url: '', avatar: avatar }] : [], time: new Date().toISOString(), type: 'video' });
+          vids.push({ header: 'YouTube', title: 'Watched ' + (vr.title?.runs?.[0]?.text || 'Unknown'), titleUrl: 'https://www.youtube.com/watch?v=' + vid, subtitles: vr.shortBylineText?.runs?.[0] ? [{ name: vr.shortBylineText.runs[0].text, url: '' }] : [], time: new Date().toISOString(), type: 'video' });
           videoCount++;
         }
       }

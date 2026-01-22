@@ -77,33 +77,10 @@ function TopChannelCard({ channel, rank, total, delay, accentColor }: TopChannel
 
   const medals = ['', '🥇', '🥈', '🥉'];
 
-  // Generate initials for fallback avatar
-  const initials = channel.name
-    .split(' ')
-    .map(word => word[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
     <div className={`top-channel-card ${visible ? 'visible' : ''}`} style={{ transitionDelay: `${delay}ms` }}>
-      {channel.avatarUrl ? (
-        <img
-          src={channel.avatarUrl}
-          alt={channel.name}
-          className="channel-avatar"
-          onError={(e) => {
-            // Fallback to initials on error
-            e.currentTarget.style.display = 'none';
-            e.currentTarget.nextElementSibling?.classList.remove('hidden');
-          }}
-        />
-      ) : null}
-      <div
-        className={`channel-avatar-fallback ${channel.avatarUrl ? 'hidden' : ''}`}
-        style={{ background: accentColor }}
-      >
-        {rank <= 3 ? medals[rank] : initials}
+      <div className="channel-rank" style={{ background: accentColor }}>
+        {rank <= 3 ? medals[rank] : `#${rank}`}
       </div>
       <div className="channel-info">
         <div className="channel-name">{channel.name}</div>
