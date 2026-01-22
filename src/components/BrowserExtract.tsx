@@ -229,7 +229,7 @@ export function BrowserExtract() {
                 href={BOOKMARKLET}
                 onClick={(e) => e.preventDefault()}
                 draggable="true"
-                className="inline-block mt-2 px-4 py-2 bg-gradient-to-b from-[#f8f8f8] to-[#e8e8e8] border border-[#ccc] rounded text-[12px] font-bold text-[var(--yt-black)] cursor-move hover:from-[#fff] hover:to-[#f0f0f0] shadow-sm"
+                className="yt-btn mt-2 cursor-move"
               >
                 📺 Extract YT History
               </a>
@@ -248,7 +248,7 @@ export function BrowserExtract() {
                 href="https://www.youtube.com/feed/history"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block mt-2 yt-btn yt-btn-primary text-[12px]"
+                className="yt-btn yt-btn-primary mt-2"
               >
                 Open YouTube History →
               </a>
@@ -300,8 +300,8 @@ export function BrowserExtract() {
                 <span className="text-[11px] font-bold">Paste script & run</span>
                 <button
                   onClick={handleCopy}
-                  className={`mt-2 w-full py-2 px-4 text-[11px] font-bold transition-all ${
-                    copied ? 'bg-[#1a7a1a] text-white' : 'yt-btn'
+                  className={`yt-btn mt-2 w-full ${
+                    copied ? 'yt-btn-success' : ''
                   }`}
                 >
                   {copied ? '✓ Copied!' : '📋 Copy Script'}
