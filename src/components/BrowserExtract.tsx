@@ -7,9 +7,17 @@ const API_SCRIPT = `(async function() {
   var pageCount = 0;
   var videoCount = 0;
   var shortsCount = 0;
+  var startTime = Date.now();
 
-  window.stop = function() { running = false; console.log('Stopping...'); };
-  window.status = function() { console.log('Total: ' + entries.length + ' (Videos: ' + videoCount + ', Shorts: ' + shortsCount + ') Pages: ' + pageCount); };
+  var elapsed = function() {
+    var s = Math.floor((Date.now() - startTime) / 1000);
+    var m = Math.floor(s / 60);
+    s = s % 60;
+    return (m > 0 ? m + 'm ' : '') + s + 's';
+  };
+
+  window.stop = function() { running = false; console.log('[' + elapsed() + '] Stopping...'); };
+  window.status = function() { console.log('[' + elapsed() + '] Total: ' + entries.length + ' (Videos: ' + videoCount + ', Shorts: ' + shortsCount + ') Pages: ' + pageCount); };
 
   var getAuth = async function() {
     var sapisid = document.cookie.split('; ').find(function(c) { return c.startsWith('SAPISID='); })?.split('=')[1];
@@ -79,7 +87,7 @@ const API_SCRIPT = `(async function() {
     for (var i = 0; i < channelUrls.length; i++) {
       var url = channelUrls[i];
       try {
-        console.log('Fetching avatar ' + (i + 1) + '/' + channelUrls.length + ': ' + url);
+        console.log('[' + elapsed() + '] Avatar ' + (i + 1) + '/' + channelUrls.length);
         var resp = await fetch(url);
         var html = await resp.text();
         var match = html.match(/"avatar":\\{"thumbnails":\\[.*?\\{"url":"([^"]+)"/);
@@ -90,17 +98,16 @@ const API_SCRIPT = `(async function() {
     return avatars;
   };
 
-  console.log('=== YouTube History API Scraper (Combined) ===');
-  console.log('Extracts Videos and Shorts with channel URLs and avatars');
+  console.log('=== YouTube History Scraper ===');
   console.log('Commands: stop() status()');
-  console.log('');
+  console.log('[0s] Starting...');
 
   var auth = await getAuth();
   var context = window.ytcfg?.data_?.INNERTUBE_CONTEXT;
 
   var initial = extractAll(window.ytInitialData);
   entries = entries.concat(initial);
-  console.log('Initial: ' + initial.length + ' (V: ' + videoCount + ' S: ' + shortsCount + ')');
+  console.log('[' + elapsed() + '] Initial: ' + initial.length + ' (V: ' + videoCount + ' S: ' + shortsCount + ')');
 
   var continuation = getToken(window.ytInitialData);
 
@@ -111,47 +118,57 @@ const API_SCRIPT = `(async function() {
       pageCount++;
       var newVids = extractAll(data);
       entries = entries.concat(newVids);
-      if (pageCount % 10 === 0) { console.log('Page ' + pageCount + ': ' + entries.length + ' total (V: ' + videoCount + ' S: ' + shortsCount + ')'); }
-      if (newVids.length === 0) { console.log('No new content, stopping'); break; }
+      if (pageCount % 10 === 0) { console.log('[' + elapsed() + '] Page ' + pageCount + ': ' + entries.length + ' total (V: ' + videoCount + ' S: ' + shortsCount + ')'); }
+      if (newVids.length === 0) { console.log('[' + elapsed() + '] No new content, stopping'); break; }
       continuation = getToken(data);
-      if (!continuation) { console.log('Reached end of history'); break; }
+      if (!continuation) { console.log('[' + elapsed() + '] Reached end of history'); break; }
       await new Promise(function(r) { setTimeout(r, 150); });
-    } catch (e) { console.log('Error: ' + e.message); break; }
+    } catch (e) { console.log('[' + elapsed() + '] Error: ' + e.message); break; }
   }
 
-  console.log('');
-  console.log('=== HISTORY COMPLETE ===');
-  console.log('Videos: ' + videoCount);
-  console.log('Shorts: ' + shortsCount);
-  console.log('Total: ' + entries.length);
+  console.log('[' + elapsed() + '] History complete: ' + entries.length + ' total (V: ' + videoCount + ' S: ' + shortsCount + ')');
 
-  // Get top channels by watch count (keyed by lowercase name, like the parser does)
-  console.log('');
-  console.log('Fetching avatars for top channels...');
-  var channelData = {};
+  // Get top channels separately for videos and shorts (matching parser logic)
+  console.log('[' + elapsed() + '] Analyzing channels...');
+  var videoChannels = {};
+  var shortsChannels = {};
   entries.forEach(function(e) {
-    if (e.subtitles && e.subtitles[0] && e.subtitles[0].name) {
-      var name = e.subtitles[0].name;
-      var key = name.toLowerCase();
-      if (!channelData[key]) {
-        channelData[key] = { name: name, url: e.subtitles[0].url, count: 0 };
-      }
-      channelData[key].count++;
-      if (e.subtitles[0].url && !channelData[key].url) {
-        channelData[key].url = e.subtitles[0].url;
-      }
+    if (!e.subtitles || !e.subtitles[0] || !e.subtitles[0].name) return;
+    var name = e.subtitles[0].name;
+    var url = e.subtitles[0].url || '';
+    var key = name.toLowerCase();
+    var isShort = e.type === 'short' || (e.titleUrl && e.titleUrl.includes('/shorts/'));
+    var map = isShort ? shortsChannels : videoChannels;
+    if (!map[key]) {
+      map[key] = { name: name, url: url, count: 0 };
+    }
+    map[key].count++;
+    if (url && url.length > 0 && (!map[key].url || map[key].url.length === 0)) {
+      map[key].url = url;
     }
   });
-  var topChannels = Object.values(channelData).sort(function(a, b) { return b.count - a.count; }).slice(0, 20);
-  var topUrls = topChannels.filter(function(c) { return c.url; }).map(function(c) { return c.url; });
-  console.log('Top channels to fetch: ' + topUrls.length);
+
+  // Get top 10 from each category
+  var topVideos = Object.values(videoChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+  var topShorts = Object.values(shortsChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+
+  // Combine and dedupe by URL
+  var urlSet = {};
+  var topUrls = [];
+  topVideos.concat(topShorts).forEach(function(c) {
+    if (c.url && c.url.length > 0 && !urlSet[c.url]) {
+      urlSet[c.url] = true;
+      topUrls.push(c.url);
+    }
+  });
+  console.log('[' + elapsed() + '] Top channels: ' + topVideos.length + ' video, ' + topShorts.length + ' shorts (' + topUrls.length + ' unique URLs)');
 
   var avatars = await getAvatars(topUrls);
-  console.log('Fetched ' + Object.keys(avatars).length + ' avatars');
+  console.log('[' + elapsed() + '] Fetched ' + Object.keys(avatars).length + ' avatars');
 
   // Add avatars to entries (match by lowercase name)
   var nameToAvatar = {};
-  topChannels.forEach(function(c) {
+  topVideos.concat(topShorts).forEach(function(c) {
     if (c.url && avatars[c.url]) {
       nameToAvatar[c.name.toLowerCase()] = avatars[c.url];
     }
@@ -163,8 +180,7 @@ const API_SCRIPT = `(async function() {
     }
   });
 
-  console.log('');
-  console.log('=== COMPLETE ===');
+  console.log('[' + elapsed() + '] Done! Downloading...');
 
   var blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
   var a = document.createElement('a');
@@ -173,7 +189,7 @@ const API_SCRIPT = `(async function() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  console.log('Downloaded!');
+  console.log('[' + elapsed() + '] Complete!');
   window.allEntries = entries;
 })();`;
 
