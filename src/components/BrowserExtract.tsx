@@ -1,60 +1,132 @@
 import { useState } from 'react';
 
-const EXTRACT_SCRIPT = `// Auto-scroll and extract YouTube watch history
+const EXTRACT_SCRIPT = `// YouTube History Extractor - Full history extraction
 (async () => {
   const entries = [];
   const seen = new Set();
-  let lastHeight = 0;
-  let noChangeCount = 0;
+  let lastCount = 0;
+  let stableCount = 0;
+  let scrollAttempts = 0;
+  const maxStable = 10; // Stop after 10 scrolls with no new content
 
-  console.log('🎬 Starting extraction... This may take a while.');
+  console.log('🎬 YouTube History Extractor');
+  console.log('📍 Make sure you are on: youtube.com/feed/history');
+  console.log('⏳ Starting... (this may take 10-30+ minutes for large histories)');
+  console.log('');
 
-  while (noChangeCount < 5) {
-    // Collect visible videos
-    document.querySelectorAll('ytd-video-renderer').forEach(el => {
-      const titleEl = el.querySelector('#video-title');
-      const channelEl = el.querySelector('#channel-name a, .ytd-channel-name a');
-      const id = titleEl?.href;
+  const collectVideos = () => {
+    // Try multiple selectors - YouTube's history page structure varies
+    const selectors = [
+      'ytd-video-renderer',
+      'ytd-reel-item-renderer',
+      'ytd-playlist-video-renderer'
+    ];
 
-      if (titleEl && id && !seen.has(id)) {
-        seen.add(id);
+    selectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        // Find the video link - try multiple approaches
+        const titleLink = el.querySelector('a#video-title') ||
+                          el.querySelector('a#video-title-link') ||
+                          el.querySelector('a.yt-simple-endpoint[href*="watch"]') ||
+                          el.querySelector('a[href*="watch"]');
+
+        if (!titleLink) return;
+
+        const url = titleLink.href;
+        if (!url || seen.has(url)) return;
+
+        // Get video title
+        const title = titleLink.textContent?.trim() ||
+                      el.querySelector('#video-title')?.textContent?.trim() ||
+                      'Unknown Title';
+
+        // Get channel info - try multiple selectors
+        const channelEl = el.querySelector('ytd-channel-name a') ||
+                          el.querySelector('#channel-name a') ||
+                          el.querySelector('.ytd-channel-name a') ||
+                          el.querySelector('a.yt-simple-endpoint[href*="/@"]') ||
+                          el.querySelector('a.yt-simple-endpoint[href*="/channel/"]') ||
+                          el.querySelector('a.yt-simple-endpoint[href*="/c/"]');
+
+        seen.add(url);
         entries.push({
           header: "YouTube",
-          title: "Watched " + titleEl.textContent.trim(),
-          titleUrl: id,
+          title: "Watched " + title,
+          titleUrl: url,
           subtitles: channelEl ? [{
-            name: channelEl.textContent.trim(),
+            name: channelEl.textContent?.trim() || 'Unknown Channel',
             url: channelEl.href || ""
           }] : [],
           time: new Date().toISOString()
         });
-      }
+      });
     });
+  };
 
-    console.log(\`📺 Collected \${entries.length} videos...\`);
+  // Initial collection
+  collectVideos();
+  console.log(\`📺 Initial: \${entries.length} videos found\`);
 
-    // Scroll down
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    await new Promise(r => setTimeout(r, 1500));
+  while (stableCount < maxStable) {
+    scrollAttempts++;
 
-    // Check if we've reached the end
-    const newHeight = document.documentElement.scrollHeight;
-    if (newHeight === lastHeight) {
-      noChangeCount++;
+    // Scroll to bottom
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+
+    // Wait for content to load (longer wait = more reliable)
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Try clicking "Show more" or continuation buttons if present
+    const showMore = document.querySelector('ytd-continuation-item-renderer button') ||
+                     document.querySelector('yt-next-continuation button') ||
+                     document.querySelector('[aria-label="Show more"]');
+    if (showMore) {
+      showMore.click();
+      await new Promise(r => setTimeout(r, 1500));
+    }
+
+    // Collect newly loaded videos
+    collectVideos();
+
+    // Check if we got new videos
+    if (entries.length === lastCount) {
+      stableCount++;
+      // Extra scroll attempts when stuck
+      if (stableCount % 3 === 0) {
+        window.scrollBy(0, -500);
+        await new Promise(r => setTimeout(r, 500));
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+        await new Promise(r => setTimeout(r, 2000));
+        collectVideos();
+      }
     } else {
-      noChangeCount = 0;
-      lastHeight = newHeight;
+      stableCount = 0;
+      lastCount = entries.length;
+    }
+
+    // Progress update every 5 scrolls
+    if (scrollAttempts % 5 === 0) {
+      console.log(\`📺 Progress: \${entries.length} videos collected (scroll #\${scrollAttempts})\`);
     }
   }
 
-  // Download
+  console.log('');
+  console.log(\`✅ Extraction complete!\`);
+  console.log(\`📊 Total videos: \${entries.length}\`);
+  console.log(\`🔄 Scroll attempts: \${scrollAttempts}\`);
+  console.log('💾 Downloading JSON file...');
+
+  // Download the file
   const blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'watch-history.json';
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
 
-  console.log(\`✅ Done! Exported \${entries.length} videos.\`);
+  console.log('✅ Download started! Check your downloads folder.');
 })();`;
 
 export function BrowserExtract() {
