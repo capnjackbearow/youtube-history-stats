@@ -1,34 +1,41 @@
 import { useState } from 'react';
 
-const EXTRACT_SCRIPT = `// YouTube History Extractor v3
+const EXTRACT_SCRIPT = `// YouTube History Extractor v4 - Fast Edition
 (async () => {
   const entries = [];
   const seen = new Set();
   let lastCount = 0;
   let stableCount = 0;
-  let scrollAttempts = 0;
-  const maxStable = 15;
+  let running = true;
+  let lastSaveCount = 0;
+  const SAVE_INTERVAL = 1000; // Auto-save every 1000 videos
+  const startTime = Date.now();
 
-  console.log('🎬 YouTube History Extractor v3');
-  console.log('📍 URL:', window.location.href);
-  console.log('⏳ Starting...');
-
-  const debugSelectors = () => {
-    const tests = {
-      'a[href*="watch?v="]': document.querySelectorAll('a[href*="watch?v="]').length,
-      'ytd-video-renderer': document.querySelectorAll('ytd-video-renderer').length,
-      'ytd-rich-item-renderer': document.querySelectorAll('ytd-rich-item-renderer').length,
-      'ytd-compact-video-renderer': document.querySelectorAll('ytd-compact-video-renderer').length,
-      '#contents ytd-video-renderer': document.querySelectorAll('#contents ytd-video-renderer').length,
-    };
-    console.log('🔍 Element counts:', tests);
+  // Stop function - type stop() in console to stop and download
+  window.stop = () => {
+    running = false;
+    console.log('🛑 Stopping... will download shortly');
   };
-  debugSelectors();
+
+  const download = () => {
+    const blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'watch-history.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  console.log('🎬 YouTube History Extractor v4');
+  console.log('📍 Type stop() anytime to stop and download');
+  console.log('⏳ Starting...\\n');
 
   const collectVideos = () => {
-    document.querySelectorAll('a[href*="watch?v="]').forEach(link => {
+    document.querySelectorAll('a[href*="watch?v="], a[href*="/shorts/"]').forEach(link => {
       const url = link.href?.split('&')[0];
-      if (!url || !url.includes('watch?v=') || seen.has(url)) return;
+      if (!url || seen.has(url)) return;
+      if (!url.includes('watch?v=') && !url.includes('/shorts/')) return;
 
       let container = link;
       for (let i = 0; i < 8; i++) {
@@ -43,11 +50,7 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v3
         title = link.textContent?.trim();
       }
       if (!title) {
-        const titleEl = container.querySelector('#video-title') ||
-                        container.querySelector('[id*="video-title"]') ||
-                        container.querySelector('h3') ||
-                        container.querySelector('span#video-title') ||
-                        container.querySelector('yt-formatted-string#video-title');
+        const titleEl = container.querySelector('#video-title, [id*="video-title"], h3, span#video-title');
         title = titleEl?.textContent?.trim();
       }
       if (!title && link.textContent?.trim().length > 5) {
@@ -57,13 +60,7 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v3
 
       let channelName = '';
       let channelUrl = '';
-      const channelLink = container.querySelector('a[href*="/@"]') ||
-                          container.querySelector('a[href*="/channel/"]') ||
-                          container.querySelector('a[href*="/c/"]') ||
-                          container.querySelector('a[href*="/user/"]') ||
-                          container.querySelector('#channel-name a') ||
-                          container.querySelector('ytd-channel-name a');
-
+      const channelLink = container.querySelector('a[href*="/@"], a[href*="/channel/"], a[href*="/c/"], #channel-name a');
       if (channelLink) {
         channelName = channelLink.textContent?.trim() || '';
         channelUrl = channelLink.href || '';
@@ -81,46 +78,40 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v3
   };
 
   collectVideos();
-  console.log(\`📺 Initial: \${entries.length} videos found\`);
+  console.log(\`📺 Initial: \${entries.length} videos\\n\`);
 
-  while (stableCount < maxStable) {
-    scrollAttempts++;
+  while (running && stableCount < 10) {
     window.scrollTo(0, document.documentElement.scrollHeight);
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 1200));
     collectVideos();
+
+    // Auto-save checkpoint
+    if (entries.length - lastSaveCount >= SAVE_INTERVAL) {
+      console.log(\`💾 Auto-saving checkpoint (\${entries.length} videos)...\`);
+      download();
+      lastSaveCount = entries.length;
+    }
 
     if (entries.length === lastCount) {
       stableCount++;
-      console.log(\`⏳ No new videos (attempt \${stableCount}/\${maxStable})\`);
-      if (stableCount % 3 === 0) {
-        window.scrollBy(0, -1000);
-        await new Promise(r => setTimeout(r, 800));
+      if (stableCount >= 3) {
+        window.scrollBy(0, -500);
+        await new Promise(r => setTimeout(r, 400));
         window.scrollTo(0, document.documentElement.scrollHeight);
-        await new Promise(r => setTimeout(r, 2500));
-        collectVideos();
       }
     } else {
-      const newVideos = entries.length - lastCount;
-      console.log(\`📺 +\${newVideos} videos (total: \${entries.length}) - scroll #\${scrollAttempts}\`);
+      const elapsed = ((Date.now() - startTime) / 60000).toFixed(1);
+      console.log(\`📺 \${entries.length.toLocaleString()} videos (\${elapsed} min)\`);
       stableCount = 0;
       lastCount = entries.length;
     }
   }
 
-  console.log('');
-  console.log('✅ Extraction complete!');
-  console.log(\`📊 Total: \${entries.length} videos\`);
+  const totalTime = ((Date.now() - startTime) / 60000).toFixed(1);
+  console.log(\`\\n✅ Done! \${entries.length.toLocaleString()} videos in \${totalTime} min\`);
   console.log('💾 Downloading...');
-
-  const blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'watch-history.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-
-  console.log('✅ Done! Check downloads folder.');
+  download();
+  delete window.stop;
 })();`;
 
 export function BrowserExtract() {
@@ -150,7 +141,7 @@ export function BrowserExtract() {
     { num: '3', title: 'Go to Console Tab', desc: 'Click the "Console" tab at the top of DevTools' },
     { num: '4', title: 'Copy the Script', desc: 'Click the button below to copy the extraction script', action: 'copy' },
     { num: '5', title: 'Paste & Run', desc: 'Paste into the console and press Enter' },
-    { num: '6', title: 'Wait for Download', desc: 'The script auto-scrolls and downloads a JSON file when done' },
+    { num: '6', title: 'Wait or Stop Early', desc: 'Auto-saves every 1000 videos. Type stop() to finish early and download.' },
   ];
 
   return (
@@ -223,8 +214,8 @@ export function BrowserExtract() {
 
           {/* Note */}
           <div className="mt-4 pt-3 border-t border-[#eee] text-[11px] text-[var(--yt-gray)]">
-            <strong>Note:</strong> This method doesn't capture exact watch dates, so "History Span" will show as recent.
-            For historical timestamps, use Google Takeout below.
+            <strong>Tip:</strong> If your browser slows down, type <code className="bg-[#f0f0f0] px-1">stop()</code> in the console to download what's collected so far.
+            This method doesn't capture exact watch dates, so "History Span" will show as recent.
           </div>
         </div>
       </div>
