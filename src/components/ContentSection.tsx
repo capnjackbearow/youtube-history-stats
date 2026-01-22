@@ -128,29 +128,64 @@ function TopChannelCard({ channel, rank, total, delay, accentColor }: TopChannel
   );
 }
 
-interface CategorySectionProps {
+interface CategoryStatsProps {
   title: string;
   emoji: string;
   count: number;
   hours: number;
   channelCount: number;
-  channelStats: ChannelStats[];
   gradientClass: string;
+  baseDelay: number;
+}
+
+function CategoryStats({ title, emoji, count, hours, channelCount, gradientClass, baseDelay }: CategoryStatsProps) {
+  if (count === 0) return null;
+
+  return (
+    <div className={`category-hero ${gradientClass}`}>
+      <div className="category-title">
+        <span className="category-emoji">{emoji}</span>
+        <span>{title}</span>
+      </div>
+
+      <div className="hero-stats">
+        <StatCard
+          value={count}
+          label="watched"
+          gradient="stat-gradient-1"
+          delay={baseDelay}
+          isNumber
+        />
+        <StatCard
+          value={formatDuration(hours)}
+          label="time spent"
+          gradient="stat-gradient-2"
+          delay={baseDelay + 100}
+        />
+        {channelCount > 0 && (
+          <StatCard
+            value={channelCount}
+            label="creators"
+            gradient="stat-gradient-3"
+            delay={baseDelay + 200}
+            isNumber
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface TopCreatorsSectionProps {
+  title: string;
+  emoji: string;
+  channelStats: ChannelStats[];
+  totalCount: number;
   accentColor: string;
   baseDelay: number;
 }
 
-function CategorySection({
-  title,
-  emoji,
-  count,
-  hours,
-  channelCount,
-  channelStats,
-  gradientClass,
-  accentColor,
-  baseDelay
-}: CategorySectionProps) {
+function TopCreatorsSection({ title, emoji, channelStats, totalCount, accentColor, baseDelay }: TopCreatorsSectionProps) {
   const [visibleCount, setVisibleCount] = useState(5);
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -164,116 +199,77 @@ function CategorySection({
   const visibleChannels = filteredChannels.slice(0, visibleCount);
   const hasMore = visibleCount < filteredChannels.length;
 
-  if (count === 0) return null;
+  if (channelStats.length === 0) return null;
 
   return (
-    <div className="category-section">
-      {/* Hero Stats */}
-      <div className={`category-hero ${gradientClass}`}>
-        <div className="category-title">
-          <span className="category-emoji">{emoji}</span>
-          <span>{title}</span>
-        </div>
-
-        <div className="hero-stats">
-          <StatCard
-            value={count}
-            label="watched"
-            gradient="stat-gradient-1"
-            delay={baseDelay}
-            isNumber
-          />
-          <StatCard
-            value={formatDuration(hours)}
-            label="time spent"
-            gradient="stat-gradient-2"
-            delay={baseDelay + 100}
-          />
-          {channelCount > 0 && (
-            <StatCard
-              value={channelCount}
-              label="creators"
-              gradient="stat-gradient-3"
-              delay={baseDelay + 200}
-              isNumber
-            />
-          )}
-        </div>
+    <div className="top-channels-section">
+      <div className="section-header">
+        <span className="header-icon">{emoji}</span>
+        <span>{title} Top Creators</span>
       </div>
 
-      {/* Top Channels */}
-      {channelStats.length > 0 && (
-        <div className="top-channels-section">
-          <div className="section-header">
-            <span className="header-icon">🏆</span>
-            <span>Your Top Creators</span>
-          </div>
+      <div className="top-channels-list">
+        {channelStats.slice(0, 10).map((channel, idx) => (
+          <TopChannelCard
+            key={channel.name}
+            channel={channel}
+            rank={idx + 1}
+            total={totalCount}
+            delay={baseDelay + idx * 100}
+            accentColor={accentColor}
+          />
+        ))}
+      </div>
 
-          <div className="top-channels-list">
-            {channelStats.slice(0, 10).map((channel, idx) => (
-              <TopChannelCard
-                key={channel.name}
-                channel={channel}
-                rank={idx + 1}
-                total={count}
-                delay={baseDelay + 300 + idx * 100}
-                accentColor={accentColor}
+      <div className={`channel-explorer ${expanded ? 'expanded' : ''}`}>
+        <button
+          className="explorer-toggle"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <span>{expanded ? 'Hide' : 'Explore'} all {channelStats.length.toLocaleString()} channels</span>
+          <span className={`toggle-arrow ${expanded ? 'up' : ''}`}>↓</span>
+        </button>
+
+        {expanded && (
+          <div className="explorer-content">
+            <div className="search-bar">
+              <input
+                type="text"
+                placeholder="Search channels..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
               />
-            ))}
-          </div>
+              <span className="search-icon">🔍</span>
+            </div>
 
-          {/* Expandable Channel Explorer */}
-          <div className={`channel-explorer ${expanded ? 'expanded' : ''}`}>
-            <button
-              className="explorer-toggle"
-              onClick={() => setExpanded(!expanded)}
-            >
-              <span>{expanded ? 'Hide' : 'Explore'} all {channelStats.length.toLocaleString()} channels</span>
-              <span className={`toggle-arrow ${expanded ? 'up' : ''}`}>↓</span>
-            </button>
+            <div className="channels-grid">
+              {visibleChannels.map((channel) => {
+                const rank = channelStats.indexOf(channel) + 1;
+                return (
+                  <div key={`${channel.name}-${rank}`} className="channel-item">
+                    <span className="item-rank">#{rank}</span>
+                    <span className="item-name">{channel.name}</span>
+                    <span className="item-count">{channel.watchCount.toLocaleString()}</span>
+                  </div>
+                );
+              })}
+            </div>
 
-            {expanded && (
-              <div className="explorer-content">
-                <div className="search-bar">
-                  <input
-                    type="text"
-                    placeholder="Search channels..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                  />
-                  <span className="search-icon">🔍</span>
-                </div>
+            {hasMore && (
+              <button
+                className="load-more-btn"
+                onClick={() => setVisibleCount(c => c + 20)}
+              >
+                Show more ({filteredChannels.length - visibleCount} remaining)
+              </button>
+            )}
 
-                <div className="channels-grid">
-                  {visibleChannels.map((channel) => {
-                    const rank = channelStats.indexOf(channel) + 1;
-                    return (
-                      <div key={`${channel.name}-${rank}`} className="channel-item">
-                        <span className="item-rank">#{rank}</span>
-                        <span className="item-name">{channel.name}</span>
-                        <span className="item-count">{channel.watchCount.toLocaleString()}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {hasMore && (
-                  <button
-                    className="load-more-btn"
-                    onClick={() => setVisibleCount(c => c + 20)}
-                  >
-                    Show more ({filteredChannels.length - visibleCount} remaining)
-                  </button>
-                )}
-
-                {filteredChannels.length === 0 && searchQuery && (
-                  <div className="no-results">No channels match "{searchQuery}"</div>
-                )}
-              </div>
+            {filteredChannels.length === 0 && searchQuery && (
+              <div className="no-results">No channels match "{searchQuery}"</div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -313,30 +309,45 @@ export function ContentSection({ stats }: ContentSectionProps) {
         )}
       </div>
 
-      {/* Videos Section */}
-      <CategorySection
-        title="Videos"
+      {/* Stats Side by Side */}
+      <div className="stats-row">
+        <CategoryStats
+          title="Videos"
+          emoji="🎬"
+          count={stats.videoCount}
+          hours={stats.videoEstimatedHours}
+          channelCount={stats.videoChannelCount}
+          gradientClass="gradient-videos"
+          baseDelay={400}
+        />
+        <CategoryStats
+          title="Shorts"
+          emoji="⚡"
+          count={stats.shortsCount}
+          hours={stats.shortsEstimatedHours}
+          channelCount={stats.shortsChannelCount}
+          gradientClass="gradient-shorts"
+          baseDelay={500}
+        />
+      </div>
+
+      {/* Top Creators Sections */}
+      <TopCreatorsSection
+        title="Video"
         emoji="🎬"
-        count={stats.videoCount}
-        hours={stats.videoEstimatedHours}
-        channelCount={stats.videoChannelCount}
         channelStats={stats.videoChannelStats}
-        gradientClass="gradient-videos"
+        totalCount={stats.videoCount}
         accentColor="#FF6B6B"
-        baseDelay={400}
+        baseDelay={700}
       />
 
-      {/* Shorts Section */}
-      <CategorySection
+      <TopCreatorsSection
         title="Shorts"
         emoji="⚡"
-        count={stats.shortsCount}
-        hours={stats.shortsEstimatedHours}
-        channelCount={stats.shortsChannelCount}
         channelStats={stats.shortsChannelStats}
-        gradientClass="gradient-shorts"
+        totalCount={stats.shortsCount}
         accentColor="#4ECDC4"
-        baseDelay={800}
+        baseDelay={900}
       />
     </div>
   );
