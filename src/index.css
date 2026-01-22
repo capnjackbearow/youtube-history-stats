@@ -820,6 +820,17 @@ body {
   margin-bottom: 4px;
 }
 
+.channel-link {
+  text-decoration: none;
+  display: block;
+  transition: color 0.2s ease;
+}
+
+.channel-link:hover {
+  color: #4ECDC4;
+  text-decoration: underline;
+}
+
 .channel-stats {
   display: flex;
   gap: 16px;

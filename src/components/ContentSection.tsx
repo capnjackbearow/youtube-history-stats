@@ -104,7 +104,11 @@ function TopChannelCard({ channel, rank, total, delay, accentColor }: TopChannel
         </div>
       )}
       <div className="channel-info">
-        <div className="channel-name">{channel.name}</div>
+        {channel.url ? (
+          <a href={channel.url} target="_blank" rel="noopener noreferrer" className="channel-name channel-link">{channel.name}</a>
+        ) : (
+          <div className="channel-name">{channel.name}</div>
+        )}
         <div className="channel-stats">
           <span className="watch-count">{channel.watchCount.toLocaleString()} watched</span>
           <span className="watch-time">{formatDuration(channel.estimatedHours)}</span>
