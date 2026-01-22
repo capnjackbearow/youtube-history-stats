@@ -85,7 +85,7 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
 
   const hadSaved = loadSaved();
   if (hadSaved) {
-    console.log('📂 Continuing from previous session...');
+    console.log(\`📂 Starting with \${entries.length.toLocaleString()} videos from previous session\`);
     console.log('');
   }
 
@@ -137,8 +137,15 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
     });
   };
 
+  const prevCount = entries.length;
   collectVideos();
-  console.log(\`📺 Initial: \${entries.length} videos\\n\`);
+  const initialNew = entries.length - prevCount;
+  if (initialNew > 0) {
+    console.log(\`📺 Found \${initialNew} videos on screen (Total: \${entries.length.toLocaleString()})\\n\`);
+  } else {
+    console.log(\`📺 Total: \${entries.length.toLocaleString()} videos\\n\`);
+  }
+  lastCount = entries.length;
 
   while (running && stableCount < 10) {
     window.scrollTo(0, document.documentElement.scrollHeight);
