@@ -142,6 +142,9 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v5
   delete window.resume;
 })();`;
 
+// Create minified bookmarklet
+const BOOKMARKLET = `javascript:(function(){${encodeURIComponent(EXTRACT_SCRIPT.replace(/\s+/g, ' '))}})()`;
+
 export function BrowserExtract() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -163,89 +166,115 @@ export function BrowserExtract() {
     }
   };
 
-  const steps = [
-    { num: '1', title: 'Open YouTube History', desc: 'Go to youtube.com/feed/history (make sure you\'re signed in)', link: 'https://www.youtube.com/feed/history' },
-    { num: '2', title: 'Open Developer Tools', desc: 'Press F12 (Windows/Linux) or Cmd+Option+J (Mac)' },
-    { num: '3', title: 'Go to Console Tab', desc: 'Click the "Console" tab at the top of DevTools' },
-    { num: '4', title: 'Copy the Script', desc: 'Click the button below to copy the extraction script', action: 'copy' },
-    { num: '5', title: 'Paste & Run', desc: 'Paste into the console and press Enter' },
-    { num: '6', title: 'Wait or Stop Early', desc: 'Auto-saves every 1000 videos. Type stop() to finish early and download.' },
-  ];
-
   return (
     <div className="yt-card max-w-2xl mx-auto">
+      {/* Main Extract Section */}
+      <div className="p-4">
+        <div className="text-center mb-4">
+          <h3 className="font-bold text-[14px] text-[var(--yt-black)] mb-1">⚡ Quick Extract</h3>
+          <p className="text-[12px] text-[var(--yt-gray)]">Two simple steps to get your watch history</p>
+        </div>
+
+        {/* Two-step process */}
+        <div className="space-y-3 mb-4">
+          {/* Step 1: Drag bookmarklet */}
+          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
+            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
+              1
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[12px] text-[var(--yt-black)]">Drag this to your bookmarks bar:</div>
+              <a
+                href={BOOKMARKLET}
+                onClick={(e) => e.preventDefault()}
+                draggable="true"
+                className="inline-block mt-2 px-4 py-2 bg-gradient-to-b from-[#f8f8f8] to-[#e8e8e8] border border-[#ccc] rounded text-[12px] font-bold text-[var(--yt-black)] cursor-move hover:from-[#fff] hover:to-[#f0f0f0] shadow-sm"
+              >
+                📺 Extract YT History
+              </a>
+              <p className="text-[10px] text-[var(--yt-gray)] mt-1">Drag the button above to your bookmarks bar (one-time setup)</p>
+            </div>
+          </div>
+
+          {/* Step 2: Go to YouTube and click */}
+          <div className="flex gap-3 items-start p-3 bg-[#f9f9f9] border border-[#eee] rounded">
+            <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
+              2
+            </div>
+            <div className="flex-1">
+              <div className="font-bold text-[12px] text-[var(--yt-black)]">Open YouTube History, then click the bookmarklet</div>
+              <a
+                href="https://www.youtube.com/feed/history"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-2 yt-btn yt-btn-primary text-[12px]"
+              >
+                Open YouTube History →
+              </a>
+              <p className="text-[10px] text-[var(--yt-gray)] mt-1">Once there, click "Extract YT History" in your bookmarks bar</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Expandable manual method */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="yt-expand-header w-full"
+        className="yt-expand-header w-full border-t border-[var(--yt-gray-border)]"
       >
-        <div className="flex items-center gap-3">
-          <span className="text-[18px]">⚡</span>
-          <span className="font-bold text-[13px]">Instant Extract (Browser Script)</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] text-[var(--yt-gray)]">Alternative: Manual console method</span>
         </div>
         <span className={`yt-expand-arrow ${isExpanded ? 'open' : ''}`}>▼</span>
       </button>
 
-      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[900px]' : 'max-h-0'}`}>
-        <div className="p-4 border-t border-[var(--yt-gray-border)]">
-          {/* Speed note */}
-          <div className="flex items-center gap-2 text-[12px] text-[var(--yt-gray)] mb-4 pb-3 border-b border-[#eee]">
-            <span>⏱️</span>
-            <span>No waiting for Google — extracts directly from YouTube in minutes</span>
-          </div>
-
-          {/* Steps */}
+      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[700px]' : 'max-h-0'}`}>
+        <div className="p-4 border-t border-[var(--yt-gray-border)] bg-[#fafafa]">
           <div className="space-y-3">
-            {steps.map((step) => (
-              <div key={step.num} className="flex gap-3 items-start">
-                <div className="w-6 h-6 flex items-center justify-center bg-[var(--yt-red)] text-white text-[11px] font-bold rounded-sm flex-shrink-0">
-                  {step.num}
-                </div>
-                <div className="flex-1">
-                  <div className="font-bold text-[12px] text-[var(--yt-black)]">{step.title}</div>
-                  <div className="text-[11px] text-[var(--yt-gray)]">{step.desc}</div>
-                  {step.link && (
-                    <a
-                      href={step.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-[var(--yt-link)] hover:underline"
-                    >
-                      → Open YouTube History
-                    </a>
-                  )}
-                  {step.action === 'copy' && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleCopy(); }}
-                      className={`mt-2 w-full py-2 px-4 text-[12px] font-bold transition-all ${
-                        copied
-                          ? 'bg-[#1a7a1a] text-white'
-                          : 'yt-btn yt-btn-primary'
-                      }`}
-                    >
-                      {copied ? '✓ Copied to Clipboard!' : '📋 Copy Script to Clipboard'}
-                    </button>
-                  )}
-                </div>
+            <div className="flex gap-3 items-start">
+              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">1</div>
+              <div className="text-[11px]">
+                <span className="font-bold">Open </span>
+                <a href="https://www.youtube.com/feed/history" target="_blank" rel="noopener noreferrer" className="text-[var(--yt-link)] hover:underline">youtube.com/feed/history</a>
               </div>
-            ))}
+            </div>
+            <div className="flex gap-3 items-start">
+              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">2</div>
+              <div className="text-[11px]"><span className="font-bold">Open DevTools:</span> F12 or Cmd+Option+J</div>
+            </div>
+            <div className="flex gap-3 items-start">
+              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">3</div>
+              <div className="text-[11px]"><span className="font-bold">Go to Console tab</span></div>
+            </div>
+            <div className="flex gap-3 items-start">
+              <div className="w-5 h-5 flex items-center justify-center bg-[var(--yt-gray)] text-white text-[10px] font-bold rounded-sm flex-shrink-0">4</div>
+              <div className="flex-1">
+                <span className="text-[11px] font-bold">Paste script & run</span>
+                <button
+                  onClick={handleCopy}
+                  className={`mt-2 w-full py-2 px-4 text-[11px] font-bold transition-all ${
+                    copied ? 'bg-[#1a7a1a] text-white' : 'yt-btn'
+                  }`}
+                >
+                  {copied ? '✓ Copied!' : '📋 Copy Script'}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Script preview */}
           <details className="mt-4 pt-3 border-t border-[#eee]">
             <summary className="cursor-pointer text-[11px] text-[var(--yt-link)] hover:underline">
-              Show script preview
+              View full script
             </summary>
             <pre className="mt-2 p-3 bg-[#f5f5f5] border border-[#ddd] text-[10px] text-[var(--yt-gray-dark)] overflow-x-auto max-h-[150px] overflow-y-auto">
               {EXTRACT_SCRIPT}
             </pre>
           </details>
 
-          {/* Note */}
-          <div className="mt-4 pt-3 border-t border-[#eee] text-[11px] text-[var(--yt-gray)] space-y-2">
-            <p><strong>Commands:</strong></p>
-            <p>• <code className="bg-[#f0f0f0] px-1">stop()</code> — Stop early and download what's collected</p>
-            <p>• <code className="bg-[#f0f0f0] px-1">resume(data)</code> — Load a previous export before scrolling starts</p>
-            <p className="pt-1 text-[10px]">To resume: Open your previous JSON, copy the contents, then run <code className="bg-[#f0f0f0] px-1">resume(JSON.parse('...'))</code> within the first 3 seconds.</p>
+          {/* Commands */}
+          <div className="mt-3 pt-3 border-t border-[#eee] text-[10px] text-[var(--yt-gray)]">
+            <strong>Console commands:</strong> <code className="bg-[#f0f0f0] px-1">stop()</code> to download early, <code className="bg-[#f0f0f0] px-1">resume(data)</code> to continue previous export
           </div>
         </div>
       </div>
