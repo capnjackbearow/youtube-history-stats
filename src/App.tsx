@@ -4,8 +4,7 @@ import { parseWatchHistory } from './lib/parser';
 import { TakeoutUploader } from './components/TakeoutUploader';
 import { BrowserExtract } from './components/BrowserExtract';
 import { Instructions } from './components/Instructions';
-import { StatsOverview } from './components/StatsOverview';
-import { ChannelTable } from './components/ChannelTable';
+import { ContentSection } from './components/ContentSection';
 
 function App() {
   const [stats, setStats] = useState<ParsedStats | null>(null);
@@ -27,7 +26,7 @@ function App() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[var(--accent-red)] opacity-[0.02] blur-[100px] rounded-full" />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto">
+      <div className={`relative z-10 mx-auto ${stats ? 'max-w-7xl' : 'max-w-6xl'}`}>
         {/* Header */}
         <header className="text-center mb-12 animate-fade-in-up">
           <div className="inline-block mb-4">
@@ -77,21 +76,36 @@ function App() {
             </div>
           </main>
         ) : (
-          <main className="space-y-8">
+          <main className="flex flex-col h-[calc(100vh-12rem)]">
             {/* Reset button */}
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center mb-6">
+              <div className="text-sm text-[var(--text-secondary)]">
+                <span className="text-[var(--accent-amber)]">{stats.longForm.totalVideos.toLocaleString()}</span> videos +{' '}
+                <span className="text-[var(--accent-red)]">{stats.shorts.totalVideos.toLocaleString()}</span> shorts ={' '}
+                <span className="text-[var(--text-primary)]">{(stats.longForm.totalVideos + stats.shorts.totalVideos).toLocaleString()}</span> total
+              </div>
               <button onClick={handleReset} className="retro-btn text-sm">
                 ◂ UPLOAD NEW FILE
               </button>
             </div>
 
-            <StatsOverview stats={stats} />
-            <ChannelTable channels={stats.channelStats} totalVideos={stats.totalVideos} />
+            {/* Two Column Layout */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+              {/* Left: Long Form */}
+              <div className="vhs-card rounded-lg p-6 overflow-hidden flex flex-col">
+                <ContentSection stats={stats.longForm} type="longForm" />
+              </div>
+
+              {/* Right: Shorts */}
+              <div className="vhs-card rounded-lg p-6 overflow-hidden flex flex-col border-[var(--accent-red)]/20">
+                <ContentSection stats={stats.shorts} type="shorts" />
+              </div>
+            </div>
 
             {/* Footer */}
-            <footer className="text-center pt-8 pb-4 border-t border-[var(--accent-amber)]/10">
+            <footer className="text-center pt-6 pb-2 mt-4 border-t border-[var(--accent-amber)]/10">
               <p className="text-xs text-[var(--text-secondary)]">
-                All data processed locally in your browser • Estimates based on 10 min average video length
+                All data processed locally • Long form: ~10 min avg • Shorts: ~30 sec avg
               </p>
             </footer>
           </main>

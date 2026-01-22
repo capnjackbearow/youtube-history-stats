@@ -18,10 +18,15 @@ export interface ChannelStats {
   estimatedHours: number;
 }
 
-export interface ParsedStats {
+export interface ContentStats {
   totalVideos: number;
   totalEstimatedHours: number;
   oldestWatchDate: Date | null;
   newestWatchDate: Date | null;
   channelStats: ChannelStats[];
+}
+
+export interface ParsedStats {
+  longForm: ContentStats;
+  shorts: ContentStats;
 }

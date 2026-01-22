@@ -1,22 +1,23 @@
-import { WatchHistoryEntry, ParsedStats, ChannelStats } from '../types';
+import { WatchHistoryEntry, ParsedStats, ChannelStats, ContentStats } from '../types';
 
 const AVERAGE_VIDEO_DURATION_MINUTES = 10;
+const AVERAGE_SHORT_DURATION_MINUTES = 0.5; // 30 seconds average for shorts
 
-export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
+function isShort(url: string): boolean {
+  return url.includes('/shorts/');
+}
+
+function processEntries(
+  entries: WatchHistoryEntry[],
+  avgDuration: number
+): ContentStats {
   const channelMap = new Map<string, { name: string; url: string; count: number }>();
-
   let oldestDate: Date | null = null;
   let newestDate: Date | null = null;
-  let validVideoCount = 0;
+  let validCount = 0;
 
-  for (const entry of data) {
-    // Skip non-YouTube entries or entries without proper data
-    if (entry.header !== 'YouTube') continue;
-
-    // Skip ads and other non-video entries
-    if (!entry.titleUrl || !entry.title.startsWith('Watched ')) continue;
-
-    validVideoCount++;
+  for (const entry of entries) {
+    validCount++;
 
     // Parse the timestamp
     const watchDate = new Date(entry.time);
@@ -52,18 +53,41 @@ export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
       name: ch.name,
       url: ch.url,
       watchCount: ch.count,
-      estimatedHours: (ch.count * AVERAGE_VIDEO_DURATION_MINUTES) / 60,
+      estimatedHours: (ch.count * avgDuration) / 60,
     }))
     .sort((a, b) => b.watchCount - a.watchCount);
 
-  const totalEstimatedHours = (validVideoCount * AVERAGE_VIDEO_DURATION_MINUTES) / 60;
+  const totalEstimatedHours = (validCount * avgDuration) / 60;
 
   return {
-    totalVideos: validVideoCount,
+    totalVideos: validCount,
     totalEstimatedHours,
     oldestWatchDate: oldestDate,
     newestWatchDate: newestDate,
     channelStats,
+  };
+}
+
+export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
+  const longFormEntries: WatchHistoryEntry[] = [];
+  const shortsEntries: WatchHistoryEntry[] = [];
+
+  for (const entry of data) {
+    // Skip non-YouTube entries or entries without proper data
+    if (entry.header !== 'YouTube') continue;
+    if (!entry.titleUrl || !entry.title.startsWith('Watched ')) continue;
+
+    // Separate by content type
+    if (isShort(entry.titleUrl)) {
+      shortsEntries.push(entry);
+    } else {
+      longFormEntries.push(entry);
+    }
+  }
+
+  return {
+    longForm: processEntries(longFormEntries, AVERAGE_VIDEO_DURATION_MINUTES),
+    shorts: processEntries(shortsEntries, AVERAGE_SHORT_DURATION_MINUTES),
   };
 }
 
