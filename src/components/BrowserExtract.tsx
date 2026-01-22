@@ -35,26 +35,26 @@ const API_SCRIPT = `(async function() {
     (function find(o) {
       if (!o || typeof o !== 'object') return;
 
-      if (o.lockupViewModel) {
+      if (o.lockupViewModel && o.lockupViewModel.contentId) {
         var v = o.lockupViewModel;
         var id = v.contentId;
-        if (id && !seen[id]) {
+        if (!seen[id]) {
           seen[id] = 1;
           var meta = v.metadata?.lockupMetadataViewModel;
           var title = meta?.title?.content || 'Unknown';
-          var channelPart = meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0];
-          var channel = channelPart?.text?.content || '';
-          var channelUrl = channelPart?.text?.commandRuns?.[0]?.onTap?.innertubeCommand?.browseEndpoint?.canonicalBaseUrl || '';
+          var rows = meta?.metadata?.contentMetadataViewModel?.metadataRows;
+          var channel = rows?.[0]?.metadataParts?.[0]?.text?.content || '';
+          var channelUrl = meta?.image?.decoratedAvatarViewModel?.rendererContext?.commandContext?.onTap?.innertubeCommand?.browseEndpoint?.canonicalBaseUrl || '';
           vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/watch?v=' + id, subtitles: channel ? [{ name: channel, url: channelUrl ? 'https://www.youtube.com' + channelUrl : '' }] : [], time: new Date().toISOString(), type: 'video' });
           videoCount++;
         }
         return;
       }
 
-      if (o.videoRenderer) {
+      if (o.videoRenderer && o.videoRenderer.videoId) {
         var vr = o.videoRenderer;
         var vid = vr.videoId;
-        if (vid && !seen[vid]) {
+        if (!seen[vid]) {
           seen[vid] = 1;
           var vrChannel = vr.shortBylineText?.runs?.[0]?.text || '';
           var vrChannelUrl = vr.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl || '';
