@@ -43,7 +43,7 @@ function App() {
       <main className="flex-1 py-6 px-4">
         <div className="max-w-6xl mx-auto">
           {!stats ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Upload Section */}
               <div className="yt-card">
                 <div className="yt-card-header">
@@ -56,7 +56,7 @@ function App() {
               </div>
 
               {/* Methods Section */}
-              <div className="text-center py-4">
+              <div className="text-center pt-2 pb-3">
                 <p className="text-[13px] text-[var(--yt-gray)]">
                   Need your <code className="bg-[#f0f0f0] px-2 py-1 text-[var(--yt-red)] font-bold">watch-history.json</code> file? Follow the instructions below:
                 </p>
@@ -65,7 +65,7 @@ function App() {
               <BrowserExtract />
 
               {/* Info Box */}
-              <div className="yt-card mt-6">
+              <div className="yt-card mt-3">
                 <div className="yt-card-body text-center py-4">
                   <p className="text-[11px] text-[var(--yt-gray)]">
                     🔒 <strong>100% Private</strong> — All data is processed locally in your browser. Nothing is uploaded to any server.
