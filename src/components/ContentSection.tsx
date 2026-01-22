@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ParsedStats, ChannelStats } from '../types';
-import { formatDuration, formatDate, calculateAccountAge } from '../lib/parser';
+import { formatDuration, formatDate } from '../lib/parser';
 
 interface ContentSectionProps {
   stats: ParsedStats;
@@ -243,7 +243,7 @@ function CategorySection({
                 </div>
 
                 <div className="channels-grid">
-                  {visibleChannels.map((channel, idx) => {
+                  {visibleChannels.map((channel) => {
                     const rank = channelStats.indexOf(channel) + 1;
                     return (
                       <div key={`${channel.name}-${rank}`} className="channel-item">
