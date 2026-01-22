@@ -11,7 +11,7 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor v7 - Memory Safe
   let lastSaveCount = 0;
   let sessionStart = 0;
   const SAVE_INTERVAL = 250;
-  const BATCH_LIMIT = 3000; // Pause for refresh after this many new videos
+  const BATCH_LIMIT = 5000; // Pause for refresh after this many new videos
   const startTime = Date.now();
 
   // Load from localStorage
@@ -285,7 +285,7 @@ export function BrowserExtract() {
 
         {/* Info note */}
         <div className="mt-4 p-2 bg-[#e8f5e9] border border-[#c8e6c9] rounded text-[11px] text-[var(--yt-gray)]">
-          <strong>💾 Auto-save:</strong> Progress saves automatically. Every ~3000 videos, the page refreshes to prevent crashes — just paste the script again to continue.
+          <strong>💾 Auto-save:</strong> Progress saves automatically. Every ~5000 videos, the page refreshes to prevent crashes — just paste the script again to continue.
         </div>
 
         {/* View script link */}
