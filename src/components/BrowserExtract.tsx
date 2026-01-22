@@ -213,6 +213,7 @@ export function BrowserExtract() {
         <div className="text-center mb-4">
           <h3 className="font-bold text-[14px] text-[var(--yt-black)] mb-1">⚡ Quick Extract</h3>
           <p className="text-[12px] text-[var(--yt-gray)]">Two simple steps to get your watch history</p>
+          <p className="text-[11px] text-[var(--yt-gray)] mt-1">Progress auto-saves — close anytime and continue later</p>
         </div>
 
         {/* Two-step process */}
@@ -253,6 +254,16 @@ export function BrowserExtract() {
               </a>
               <p className="text-[10px] text-[var(--yt-gray)] mt-1">Click the bookmarklet to start. Progress auto-saves — run again anytime to continue.</p>
             </div>
+          </div>
+        </div>
+
+        {/* Info notes */}
+        <div className="px-4 pb-4 space-y-2 text-[11px] text-[var(--yt-gray)]">
+          <div className="p-2 bg-[#e8f5e9] border border-[#c8e6c9] rounded">
+            <strong>💾 Auto-save:</strong> Progress saves every 500 videos. Type <code className="bg-[#fff] px-1">stop()</code> to pause, or just close the tab. Run again to continue where you left off.
+          </div>
+          <div className="p-2 bg-[#fff3e0] border border-[#ffe0b2] rounded">
+            <strong>⚠️ Ignore warnings:</strong> You may see "resource preloaded but not used" errors — these are from YouTube, not the script. They're harmless.
           </div>
         </div>
       </div>
