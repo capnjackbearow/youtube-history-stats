@@ -1,64 +1,101 @@
 import { useState } from 'react';
 
-const EXTRACT_SCRIPT = `// YouTube History Extractor - Full history extraction
+const EXTRACT_SCRIPT = `// YouTube History Extractor v3
 (async () => {
   const entries = [];
   const seen = new Set();
   let lastCount = 0;
   let stableCount = 0;
   let scrollAttempts = 0;
-  const maxStable = 10; // Stop after 10 scrolls with no new content
+  const maxStable = 15;
 
-  console.log('🎬 YouTube History Extractor');
-  console.log('📍 Make sure you are on: youtube.com/feed/history');
-  console.log('⏳ Starting... (this may take 10-30+ minutes for large histories)');
-  console.log('');
+  console.log('🎬 YouTube History Extractor v3');
+  console.log('📍 URL:', window.location.href);
+  console.log('⏳ Starting...');
+
+  // Debug: Show what elements exist on the page
+  const debugSelectors = () => {
+    const tests = {
+      'a[href*="watch?v="]': document.querySelectorAll('a[href*="watch?v="]').length,
+      'ytd-video-renderer': document.querySelectorAll('ytd-video-renderer').length,
+      'ytd-rich-item-renderer': document.querySelectorAll('ytd-rich-item-renderer').length,
+      'ytd-compact-video-renderer': document.querySelectorAll('ytd-compact-video-renderer').length,
+      '#contents ytd-video-renderer': document.querySelectorAll('#contents ytd-video-renderer').length,
+    };
+    console.log('🔍 Element counts:', tests);
+  };
+  debugSelectors();
 
   const collectVideos = () => {
-    // Try multiple selectors - YouTube's history page structure varies
-    const selectors = [
-      'ytd-video-renderer',
-      'ytd-reel-item-renderer',
-      'ytd-playlist-video-renderer'
-    ];
+    // Strategy: Find ALL links to videos, then get context from parent elements
+    document.querySelectorAll('a[href*="watch?v="]').forEach(link => {
+      const url = link.href?.split('&')[0]; // Clean URL, remove extra params
+      if (!url || !url.includes('watch?v=') || seen.has(url)) return;
 
-    selectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => {
-        // Find the video link - try multiple approaches
-        const titleLink = el.querySelector('a#video-title') ||
-                          el.querySelector('a#video-title-link') ||
-                          el.querySelector('a.yt-simple-endpoint[href*="watch"]') ||
-                          el.querySelector('a[href*="watch"]');
+      // Walk up to find the video container (usually 3-5 levels up)
+      let container = link;
+      for (let i = 0; i < 8; i++) {
+        if (!container.parentElement) break;
+        container = container.parentElement;
 
-        if (!titleLink) return;
+        // Check if this looks like a video container
+        const tagName = container.tagName?.toLowerCase() || '';
+        if (tagName.includes('renderer') || tagName.includes('item')) break;
+      }
 
-        const url = titleLink.href;
-        if (!url || seen.has(url)) return;
+      // Get title - try the link text first, then search nearby
+      let title = '';
 
-        // Get video title
-        const title = titleLink.textContent?.trim() ||
-                      el.querySelector('#video-title')?.textContent?.trim() ||
-                      'Unknown Title';
+      // Check if this link IS the title link
+      if (link.id === 'video-title' || link.id === 'video-title-link') {
+        title = link.textContent?.trim();
+      }
 
-        // Get channel info - try multiple selectors
-        const channelEl = el.querySelector('ytd-channel-name a') ||
-                          el.querySelector('#channel-name a') ||
-                          el.querySelector('.ytd-channel-name a') ||
-                          el.querySelector('a.yt-simple-endpoint[href*="/@"]') ||
-                          el.querySelector('a.yt-simple-endpoint[href*="/channel/"]') ||
-                          el.querySelector('a.yt-simple-endpoint[href*="/c/"]');
+      // Otherwise search for title in container
+      if (!title) {
+        const titleEl = container.querySelector('#video-title') ||
+                        container.querySelector('[id*="video-title"]') ||
+                        container.querySelector('h3') ||
+                        container.querySelector('span#video-title') ||
+                        container.querySelector('yt-formatted-string#video-title');
+        title = titleEl?.textContent?.trim();
+      }
 
-        seen.add(url);
-        entries.push({
-          header: "YouTube",
-          title: "Watched " + title,
-          titleUrl: url,
-          subtitles: channelEl ? [{
-            name: channelEl.textContent?.trim() || 'Unknown Channel',
-            url: channelEl.href || ""
-          }] : [],
-          time: new Date().toISOString()
-        });
+      // Last resort: use link text if it's substantial
+      if (!title && link.textContent?.trim().length > 5) {
+        title = link.textContent.trim();
+      }
+
+      if (!title) title = 'Unknown Title';
+
+      // Get channel - search in container and nearby
+      let channelName = '';
+      let channelUrl = '';
+
+      const channelLink = container.querySelector('a[href*="/@"]') ||
+                          container.querySelector('a[href*="/channel/"]') ||
+                          container.querySelector('a[href*="/c/"]') ||
+                          container.querySelector('a[href*="/user/"]') ||
+                          container.querySelector('#channel-name a') ||
+                          container.querySelector('ytd-channel-name a');
+
+      if (channelLink) {
+        channelName = channelLink.textContent?.trim() || '';
+        channelUrl = channelLink.href || '';
+      }
+
+      // Skip if we already have this exact entry
+      seen.add(url);
+
+      entries.push({
+        header: "YouTube",
+        title: "Watched " + title,
+        titleUrl: url,
+        subtitles: channelName ? [{
+          name: channelName,
+          url: channelUrl
+        }] : [],
+        time: new Date().toISOString()
       });
     });
   };
@@ -70,53 +107,39 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor - Full history extraction
   while (stableCount < maxStable) {
     scrollAttempts++;
 
-    // Scroll to bottom
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    // Scroll down
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    await new Promise(r => setTimeout(r, 2500));
 
-    // Wait for content to load (longer wait = more reliable)
-    await new Promise(r => setTimeout(r, 2000));
-
-    // Try clicking "Show more" or continuation buttons if present
-    const showMore = document.querySelector('ytd-continuation-item-renderer button') ||
-                     document.querySelector('yt-next-continuation button') ||
-                     document.querySelector('[aria-label="Show more"]');
-    if (showMore) {
-      showMore.click();
-      await new Promise(r => setTimeout(r, 1500));
-    }
-
-    // Collect newly loaded videos
+    // Collect videos
     collectVideos();
 
-    // Check if we got new videos
+    // Check progress
     if (entries.length === lastCount) {
       stableCount++;
-      // Extra scroll attempts when stuck
+      console.log(\`⏳ No new videos (attempt \${stableCount}/\${maxStable})\`);
+
+      // Try to trigger more loading
       if (stableCount % 3 === 0) {
-        window.scrollBy(0, -500);
-        await new Promise(r => setTimeout(r, 500));
-        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-        await new Promise(r => setTimeout(r, 2000));
+        window.scrollBy(0, -1000);
+        await new Promise(r => setTimeout(r, 800));
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        await new Promise(r => setTimeout(r, 2500));
         collectVideos();
       }
     } else {
+      const newVideos = entries.length - lastCount;
+      console.log(\`📺 +\${newVideos} videos (total: \${entries.length}) - scroll #\${scrollAttempts}\`);
       stableCount = 0;
       lastCount = entries.length;
-    }
-
-    // Progress update every 5 scrolls
-    if (scrollAttempts % 5 === 0) {
-      console.log(\`📺 Progress: \${entries.length} videos collected (scroll #\${scrollAttempts})\`);
     }
   }
 
   console.log('');
-  console.log(\`✅ Extraction complete!\`);
-  console.log(\`📊 Total videos: \${entries.length}\`);
-  console.log(\`🔄 Scroll attempts: \${scrollAttempts}\`);
-  console.log('💾 Downloading JSON file...');
+  console.log('✅ Extraction complete!');
+  console.log(\`📊 Total: \${entries.length} videos\`);
+  console.log('💾 Downloading...');
 
-  // Download the file
   const blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -124,9 +147,8 @@ const EXTRACT_SCRIPT = `// YouTube History Extractor - Full history extraction
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
 
-  console.log('✅ Download started! Check your downloads folder.');
+  console.log('✅ Done! Check downloads folder.');
 })();`;
 
 export function BrowserExtract() {
