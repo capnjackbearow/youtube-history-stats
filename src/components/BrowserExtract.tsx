@@ -36,8 +36,11 @@ const API_SCRIPT = `(async function() {
           seen[id] = true;
           var meta = v.metadata?.lockupMetadataViewModel;
           var title = meta?.title?.content || 'Unknown';
-          var channel = meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content || '';
-          vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/watch?v=' + id, subtitles: channel ? [{ name: channel, url: '' }] : [], time: new Date().toISOString(), type: 'video' });
+          var rows = meta?.metadata?.contentMetadataViewModel?.metadataRows;
+          var channelPart = rows?.[0]?.metadataParts?.[0];
+          var channel = channelPart?.text?.content || '';
+          var channelUrl = channelPart?.text?.commandRuns?.[0]?.onTap?.innertubeCommand?.browseEndpoint?.canonicalBaseUrl || '';
+          vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/watch?v=' + id, subtitles: channel ? [{ name: channel, url: channelUrl ? 'https://www.youtube.com' + channelUrl : '' }] : [], time: new Date().toISOString(), type: 'video' });
           videoCount++;
         }
       }
@@ -48,7 +51,9 @@ const API_SCRIPT = `(async function() {
         var vid = vr.videoId;
         if (!seen[vid]) {
           seen[vid] = true;
-          vids.push({ header: 'YouTube', title: 'Watched ' + (vr.title?.runs?.[0]?.text || 'Unknown'), titleUrl: 'https://www.youtube.com/watch?v=' + vid, subtitles: vr.shortBylineText?.runs?.[0] ? [{ name: vr.shortBylineText.runs[0].text, url: '' }] : [], time: new Date().toISOString(), type: 'video' });
+          var vrChannel = vr.shortBylineText?.runs?.[0]?.text || '';
+          var vrChannelUrl = vr.shortBylineText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl || '';
+          vids.push({ header: 'YouTube', title: 'Watched ' + (vr.title?.runs?.[0]?.text || 'Unknown'), titleUrl: 'https://www.youtube.com/watch?v=' + vid, subtitles: vrChannel ? [{ name: vrChannel, url: vrChannelUrl ? 'https://www.youtube.com' + vrChannelUrl : '' }] : [], time: new Date().toISOString(), type: 'video' });
           videoCount++;
         }
       }
@@ -60,8 +65,8 @@ const API_SCRIPT = `(async function() {
         if (shortId && !seen[shortId]) {
           seen[shortId] = true;
           var accText = s.accessibilityText || '';
-          var title = accText.split(/,\\s*[\\d.]+\\s*(million|thousand|billion)?\\s*views/i)[0] || 'Short';
-          vids.push({ header: 'YouTube', title: 'Watched ' + title, titleUrl: 'https://www.youtube.com/shorts/' + shortId, subtitles: [], time: new Date().toISOString(), type: 'short' });
+          var shortTitle = accText.split(/,\\s*[\\d.]+\\s*(million|thousand|billion)?\\s*views/i)[0] || 'Short';
+          vids.push({ header: 'YouTube', title: 'Watched ' + shortTitle, titleUrl: 'https://www.youtube.com/shorts/' + shortId, subtitles: [], time: new Date().toISOString(), type: 'short' });
           shortsCount++;
         }
       }
@@ -71,8 +76,24 @@ const API_SCRIPT = `(async function() {
     return vids;
   };
 
+  var getAvatars = async function(channelUrls) {
+    var avatars = {};
+    for (var i = 0; i < channelUrls.length; i++) {
+      var url = channelUrls[i];
+      try {
+        console.log('Fetching avatar ' + (i + 1) + '/' + channelUrls.length + ': ' + url);
+        var resp = await fetch(url);
+        var html = await resp.text();
+        var match = html.match(/"avatar":\\{"thumbnails":\\[.*?\\{"url":"([^"]+)"/);
+        if (match) avatars[url] = match[1];
+      } catch (e) {}
+      await new Promise(function(r) { setTimeout(r, 200); });
+    }
+    return avatars;
+  };
+
   console.log('=== YouTube History API Scraper (Combined) ===');
-  console.log('Extracts both Videos and Shorts from unfiltered history');
+  console.log('Extracts Videos and Shorts with channel URLs and avatars');
   console.log('Commands: stop() status()');
   console.log('');
 
@@ -101,10 +122,36 @@ const API_SCRIPT = `(async function() {
   }
 
   console.log('');
-  console.log('=== COMPLETE ===');
+  console.log('=== HISTORY COMPLETE ===');
   console.log('Videos: ' + videoCount);
   console.log('Shorts: ' + shortsCount);
   console.log('Total: ' + entries.length);
+
+  // Get top 10 channels by watch count
+  console.log('');
+  console.log('Fetching avatars for top channels...');
+  var channelCounts = {};
+  entries.forEach(function(e) {
+    if (e.subtitles && e.subtitles[0] && e.subtitles[0].url) {
+      var url = e.subtitles[0].url;
+      channelCounts[url] = (channelCounts[url] || 0) + 1;
+    }
+  });
+  var topChannels = Object.keys(channelCounts).sort(function(a, b) { return channelCounts[b] - channelCounts[a]; }).slice(0, 10);
+  console.log('Top 10 channels: ' + topChannels.length);
+
+  var avatars = await getAvatars(topChannels);
+  console.log('Fetched ' + Object.keys(avatars).length + ' avatars');
+
+  // Add avatars to entries
+  entries.forEach(function(e) {
+    if (e.subtitles && e.subtitles[0] && e.subtitles[0].url && avatars[e.subtitles[0].url]) {
+      e.subtitles[0].avatar = avatars[e.subtitles[0].url];
+    }
+  });
+
+  console.log('');
+  console.log('=== COMPLETE ===');
 
   var blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
   var a = document.createElement('a');

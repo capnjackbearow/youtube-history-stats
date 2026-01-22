@@ -719,15 +719,16 @@ body {
 .section-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 12px;
+  font-size: 32px;
+  font-weight: 800;
   color: #fff;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .header-icon {
-  font-size: 24px;
+  font-size: 40px;
 }
 
 .top-channels-list {
