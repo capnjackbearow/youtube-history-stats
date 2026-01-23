@@ -27,37 +27,6 @@ function AnimatedNumber({ value, duration = 1500 }: { value: number; duration?: 
   return <span>{Math.round(displayValue).toLocaleString()}</span>;
 }
 
-interface StatCardProps {
-  value: string | number;
-  label: string;
-  sublabel?: string;
-  gradient: string;
-  delay: number;
-  isNumber?: boolean;
-}
-
-function StatCard({ value, label, sublabel, gradient, delay, isNumber = false }: StatCardProps) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  return (
-    <div
-      className={`stat-card ${gradient} ${visible ? 'visible' : ''}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      <div className="stat-value">
-        {isNumber ? <AnimatedNumber value={value as number} duration={2000} /> : value}
-      </div>
-      <div className="stat-label">{label}</div>
-      {sublabel && <div className="stat-sublabel">{sublabel}</div>}
-    </div>
-  );
-}
-
 interface TopChannelCardProps {
   channel: ChannelStats;
   rank: number;
@@ -128,50 +97,57 @@ function TopChannelCard({ channel, rank, total, delay, accentColor }: TopChannel
   );
 }
 
-interface CategoryStatsProps {
-  title: string;
-  emoji: string;
-  count: number;
-  hours: number;
-  channelCount: number;
-  gradientClass: string;
+interface StatsTableProps {
+  videoCount: number;
+  videoHours: number;
+  videoCreators: number;
+  shortsCount: number;
+  shortsHours: number;
+  shortsCreators: number;
   baseDelay: number;
 }
 
-function CategoryStats({ title, emoji, count, hours, channelCount, gradientClass, baseDelay }: CategoryStatsProps) {
-  if (count === 0) return null;
+function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shortsHours, shortsCreators, baseDelay }: StatsTableProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), baseDelay);
+    return () => clearTimeout(timer);
+  }, [baseDelay]);
 
   return (
-    <div className={`category-hero ${gradientClass}`}>
-      <div className="category-title">
-        <span className="category-emoji">{emoji}</span>
-        <span>{title}</span>
-      </div>
-
-      <div className="hero-stats">
-        <StatCard
-          value={count}
-          label="watched"
-          gradient="stat-gradient-1"
-          delay={baseDelay}
-          isNumber
-        />
-        <StatCard
-          value={formatDuration(hours)}
-          label="time spent"
-          gradient="stat-gradient-2"
-          delay={baseDelay + 100}
-        />
-        {channelCount > 0 && (
-          <StatCard
-            value={channelCount}
-            label="creators"
-            gradient="stat-gradient-3"
-            delay={baseDelay + 200}
-            isNumber
-          />
-        )}
-      </div>
+    <div className={`stats-table-container ${visible ? 'visible' : ''}`}>
+      <table className="stats-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Watched</th>
+            <th>Time Spent</th>
+            <th className="divider-col"></th>
+            <th>Creators</th>
+          </tr>
+        </thead>
+        <tbody>
+          {videoCount > 0 && (
+            <tr className="video-row">
+              <td className="row-label"><span className="row-emoji">🎬</span> Videos</td>
+              <td className="stat-cell">{visible ? <AnimatedNumber value={videoCount} duration={2000} /> : '0'}</td>
+              <td className="stat-cell">{formatDuration(videoHours)}</td>
+              <td className="divider-col"></td>
+              <td className="stat-cell creators">{visible ? <AnimatedNumber value={videoCreators} duration={2000} /> : '0'}</td>
+            </tr>
+          )}
+          {shortsCount > 0 && (
+            <tr className="shorts-row">
+              <td className="row-label"><span className="row-emoji">⚡</span> Shorts</td>
+              <td className="stat-cell">{visible ? <AnimatedNumber value={shortsCount} duration={2000} /> : '0'}</td>
+              <td className="stat-cell">{formatDuration(shortsHours)}</td>
+              <td className="divider-col"></td>
+              <td className="stat-cell creators">{visible ? <AnimatedNumber value={shortsCreators} duration={2000} /> : '0'}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -389,27 +365,16 @@ export function ContentSection({ stats }: ContentSectionProps) {
         )}
       </div>
 
-      {/* Stats Side by Side */}
-      <div className="stats-row">
-        <CategoryStats
-          title="Videos"
-          emoji="🎬"
-          count={stats.videoCount}
-          hours={stats.videoEstimatedHours}
-          channelCount={stats.videoChannelCount}
-          gradientClass="gradient-videos"
-          baseDelay={400}
-        />
-        <CategoryStats
-          title="Shorts"
-          emoji="⚡"
-          count={stats.shortsCount}
-          hours={stats.shortsEstimatedHours}
-          channelCount={stats.shortsChannelCount}
-          gradientClass="gradient-shorts"
-          baseDelay={500}
-        />
-      </div>
+      {/* Stats Table */}
+      <StatsTable
+        videoCount={stats.videoCount}
+        videoHours={stats.videoEstimatedHours}
+        videoCreators={stats.videoChannelCount}
+        shortsCount={stats.shortsCount}
+        shortsHours={stats.shortsEstimatedHours}
+        shortsCreators={stats.shortsChannelCount}
+        baseDelay={400}
+      />
 
       {/* Video Top Creators + Categories Side by Side */}
       <div className="creators-row">
