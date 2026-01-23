@@ -107,8 +107,11 @@ interface StatsTableProps {
   baseDelay: number;
 }
 
-function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shortsHours, shortsCreators, baseDelay }: StatsTableProps) {
+function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shortsHours, baseDelay }: StatsTableProps) {
   const [visible, setVisible] = useState(false);
+  const hasVideos = videoCount > 0;
+  const hasShorts = shortsCount > 0;
+  const rowCount = (hasVideos ? 1 : 0) + (hasShorts ? 1 : 0);
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), baseDelay);
@@ -119,31 +122,45 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
     <div className={`stats-table-container ${visible ? 'visible' : ''}`}>
       <table className="stats-table">
         <thead>
-          <tr>
+          <tr className="section-header-row">
+            <th></th>
+            <th colSpan={2} className="section-header">Lifetime Stats</th>
+            <th className="divider-col"></th>
+            <th className="section-header">Creator Stats</th>
+          </tr>
+          <tr className="sub-header-row">
             <th></th>
             <th>Watched</th>
             <th>Time Spent</th>
             <th className="divider-col"></th>
-            <th>Creators</th>
+            <th>Unique Creators</th>
           </tr>
         </thead>
         <tbody>
-          {videoCount > 0 && (
+          {hasVideos && (
             <tr className="video-row">
               <td className="row-label"><span className="row-emoji">🎬</span> Videos</td>
               <td className="stat-cell">{visible ? <AnimatedNumber value={videoCount} duration={2000} /> : '0'}</td>
               <td className="stat-cell">{formatDuration(videoHours)}</td>
-              <td className="divider-col"></td>
-              <td className="stat-cell creators">{visible ? <AnimatedNumber value={videoCreators} duration={2000} /> : '0'}</td>
+              <td className="divider-col" rowSpan={rowCount}></td>
+              <td className="stat-cell creators-merged" rowSpan={rowCount}>
+                <div className="creators-value">{visible ? <AnimatedNumber value={videoCreators} duration={2000} /> : '0'}</div>
+                <div className="creators-label">channels watched</div>
+              </td>
             </tr>
           )}
-          {shortsCount > 0 && (
+          {hasShorts && (
             <tr className="shorts-row">
               <td className="row-label"><span className="row-emoji">⚡</span> Shorts</td>
               <td className="stat-cell">{visible ? <AnimatedNumber value={shortsCount} duration={2000} /> : '0'}</td>
               <td className="stat-cell">{formatDuration(shortsHours)}</td>
-              <td className="divider-col"></td>
-              <td className="stat-cell creators">{visible ? <AnimatedNumber value={shortsCreators} duration={2000} /> : '0'}</td>
+              {!hasVideos && <td className="divider-col" rowSpan={rowCount}></td>}
+              {!hasVideos && (
+                <td className="stat-cell creators-merged" rowSpan={rowCount}>
+                  <div className="creators-value">0</div>
+                  <div className="creators-label">channels watched</div>
+                </td>
+              )}
             </tr>
           )}
         </tbody>

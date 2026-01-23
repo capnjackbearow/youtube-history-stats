@@ -598,7 +598,7 @@ body {
    STATS TABLE
    ============================================ */
 .stats-table-container {
-  max-width: 700px;
+  max-width: 750px;
   margin: 0 auto 48px;
   padding: 0 24px;
   opacity: 0;
@@ -622,28 +622,47 @@ body {
 }
 
 .stats-table th {
-  padding: 16px 20px;
-  font-size: 12px;
+  padding: 12px 16px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.4);
   text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .stats-table th:first-child {
   text-align: left;
 }
 
+.stats-table .section-header-row th {
+  padding-bottom: 4px;
+  border-bottom: none;
+}
+
+.stats-table .section-header {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 1.5px;
+}
+
+.stats-table .sub-header-row th {
+  padding-top: 4px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
 .stats-table td {
-  padding: 20px;
+  padding: 20px 16px;
   text-align: center;
 }
 
 .stats-table .row-label {
   text-align: left;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #fff;
   display: flex;
@@ -652,42 +671,59 @@ body {
 }
 
 .stats-table .row-emoji {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .stats-table .stat-cell {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 800;
   color: #fff;
 }
 
 .stats-table .divider-col {
-  width: 1px;
+  width: 2px;
   padding: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.15), transparent);
 }
 
 .stats-table th.divider-col {
-  border-bottom: none;
+  background: transparent;
 }
 
 .stats-table .video-row {
-  background: linear-gradient(90deg, rgba(255, 107, 107, 0.1) 0%, transparent 50%);
+  background: linear-gradient(90deg, rgba(255, 107, 107, 0.12) 0%, transparent 40%);
 }
 
 .stats-table .shorts-row {
-  background: linear-gradient(90deg, rgba(78, 205, 196, 0.1) 0%, transparent 50%);
+  background: linear-gradient(90deg, rgba(78, 205, 196, 0.12) 0%, transparent 40%);
 }
 
-.stats-table .video-row .stat-cell.creators {
-  color: #FF6B6B;
+.stats-table .creators-merged {
+  background: linear-gradient(135deg, rgba(175, 82, 222, 0.15) 0%, rgba(255, 45, 85, 0.1) 100%);
+  vertical-align: middle;
+  padding: 24px 20px;
 }
 
-.stats-table .shorts-row .stat-cell.creators {
-  color: #4ECDC4;
+.stats-table .creators-value {
+  font-size: 36px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #AF52DE 0%, #FF2D55 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
 }
 
-.stats-table tbody tr:not(:last-child) td {
+.stats-table .creators-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
+}
+
+.stats-table tbody tr:not(:last-child) td:not(.creators-merged):not(.divider-col) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
