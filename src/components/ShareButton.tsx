@@ -213,9 +213,9 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreato
 
           <div className="share-label">videos & shorts watched</div>
 
-          <div className="share-time">
+          <div className="share-time-block">
             <span className="share-time-value">{formatDuration(stats.totalEstimatedHours)}</span>
-            <span className="share-time-label"> of my life</span>
+            <span className="share-time-label">of my life watching YouTube</span>
           </div>
 
           <div className="share-url">youtube-history-stats.vercel.app</div>
@@ -228,12 +228,16 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreato
           <div className="share-creators">
             {topCreators.map((creator, idx) => (
               <div key={creator.name} className={`share-creator share-creator-${idx + 1}`}>
-                <div className="share-creator-rank">
-                  {idx === 0 ? '1' : idx === 1 ? '2' : '3'}
-                </div>
+                {creator.avatarUrl ? (
+                  <img src={creator.avatarUrl} alt="" className="share-creator-avatar" />
+                ) : (
+                  <div className="share-creator-rank">
+                    {idx + 1}
+                  </div>
+                )}
                 <div className="share-creator-info">
                   <div className="share-creator-name">{creator.name}</div>
-                  <div className="share-creator-count">{creator.watchCount.toLocaleString()} videos</div>
+                  <div className="share-creator-count">{creator.watchCount.toLocaleString()} videos watched</div>
                 </div>
               </div>
             ))}
