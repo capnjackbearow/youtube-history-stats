@@ -70,8 +70,17 @@ const API_SCRIPT = `(async function() {
         if (shortId && !seen[shortId]) {
           seen[shortId] = 1;
           var accText = s.accessibilityText || '';
-          var shortTitle = accText.split(/,\\s*[\\d.]+\\s*(million|thousand|billion)?\\s*views/i)[0] || 'Short';
-          vids.push({ header: 'YouTube', title: 'Watched ' + shortTitle, titleUrl: 'https://www.youtube.com/shorts/' + shortId, subtitles: [], time: new Date().toISOString(), type: 'short' });
+          // Format: "Title - ChannelName, X views" or "Title, X views"
+          var beforeViews = accText.split(/,\\s*[\\d.]+\\s*(million|thousand|billion|[KMB])?\\s*views/i)[0] || '';
+          var shortChannel = '';
+          var shortTitle = beforeViews;
+          // Try to extract channel from "Title - Channel" format
+          var dashMatch = beforeViews.match(/^(.+?)\\s+-\\s+(.+)$/);
+          if (dashMatch) {
+            shortTitle = dashMatch[1];
+            shortChannel = dashMatch[2];
+          }
+          vids.push({ header: 'YouTube', title: 'Watched ' + (shortTitle || 'Short'), titleUrl: 'https://www.youtube.com/shorts/' + shortId, subtitles: shortChannel ? [{ name: shortChannel, url: '' }] : [], time: new Date().toISOString(), type: 'short' });
           shortsCount++;
         }
         return;
