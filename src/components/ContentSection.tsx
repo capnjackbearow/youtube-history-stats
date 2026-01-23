@@ -134,7 +134,7 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
             <th></th>
             <th>Watched</th>
             <th>Time Spent</th>
-            <th></th>
+            <th>Channels</th>
           </tr>
         </thead>
         <tbody>
@@ -144,8 +144,7 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
               <td className="stat-cell">{visible ? <AnimatedNumber value={videoCount} duration={2000} /> : '0'}</td>
               <td className="stat-cell">{formatDuration(videoHours)}</td>
               <td className="stat-cell creators-merged" rowSpan={rowCount}>
-                <div className="creators-value">{visible ? <AnimatedNumber value={videoCreators} duration={2000} /> : '0'}</div>
-                <div className="creators-label">channels watched</div>
+                {visible ? <AnimatedNumber value={videoCreators} duration={2000} /> : '0'}
               </td>
             </tr>
           )}
@@ -155,10 +154,7 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
               <td className="stat-cell">{visible ? <AnimatedNumber value={shortsCount} duration={2000} /> : '0'}</td>
               <td className="stat-cell">{formatDuration(shortsHours)}</td>
               {!hasVideos && (
-                <td className="stat-cell creators-merged" rowSpan={rowCount}>
-                  <div className="creators-value">0</div>
-                  <div className="creators-label">channels watched</div>
-                </td>
+                <td className="stat-cell creators-merged" rowSpan={rowCount}>0</td>
               )}
             </tr>
           )}

@@ -716,29 +716,22 @@ body {
 }
 
 .stats-table .creators-merged {
-  background: linear-gradient(135deg, rgba(175, 82, 222, 0.15) 0%, rgba(255, 45, 85, 0.1) 100%);
   vertical-align: middle;
-  padding: 32px 24px;
+  padding: 24px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.stats-table .creators-value {
   font-size: 36px;
   font-weight: 900;
-  background: linear-gradient(135deg, #AF52DE 0%, #FF2D55 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1.1;
+  font-style: italic;
+  color: #FF2D55;
+  position: relative;
 }
 
-.stats-table .creators-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 6px;
+.stats-table .creators-merged::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(175, 82, 222, 0.15) 0%, rgba(255, 45, 85, 0.1) 100%);
+  z-index: -1;
 }
 
 .stats-table tbody tr:not(:last-child) td:not(.creators-merged) {
