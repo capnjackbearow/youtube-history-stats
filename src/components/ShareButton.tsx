@@ -193,12 +193,6 @@ interface ShareCardProps {
 }
 
 const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreators }, ref) => {
-  // Split duration into number and unit for better spacing
-  const durationStr = formatDuration(stats.totalEstimatedHours);
-  const durationParts = durationStr.match(/^([\d.]+)\s*(.+)$/);
-  const durationNum = durationParts ? durationParts[1] : durationStr;
-  const durationUnit = durationParts ? durationParts[2] : '';
-
   return (
     <div ref={ref} className="share-card">
       {/* Background with gradient glows */}
@@ -220,7 +214,7 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreato
           <div className="share-label">videos & shorts watched</div>
 
           <div className="share-time-block">
-            <span className="share-time-value">{durationNum} <span className="share-time-unit">{durationUnit}</span></span>
+            <span className="share-time-value">{formatDuration(stats.totalEstimatedHours)}</span>
             <span className="share-time-label">of my life watching YouTube</span>
           </div>
 
