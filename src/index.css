@@ -2093,7 +2093,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   padding: 32px;
-  max-width: 520px;
+  max-width: 680px;
   width: 100%;
   position: relative;
   animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -2164,12 +2164,14 @@ body {
   margin-bottom: 24px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: 200px;
 }
 
 .share-card-wrapper {
   display: flex;
   justify-content: center;
   padding: 16px;
+  overflow: hidden;
 }
 
 .share-preview-image {
@@ -2277,8 +2279,8 @@ body {
    SHARE CARD (The actual shareable image)
    ============================================ */
 .share-card {
-  width: 450px;
-  height: 253px; /* 16:9 Twitter aspect ratio scaled */
+  width: 600px;
+  height: 338px; /* 16:9 Twitter aspect ratio */
   position: relative;
   border-radius: 16px;
   overflow: hidden;
@@ -2291,164 +2293,117 @@ body {
   background: linear-gradient(135deg, #0d0a14 0%, #1a0f24 50%, #0f0a18 100%);
 }
 
-.share-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.6;
-}
-
-.share-glow-1 {
-  width: 200px;
-  height: 200px;
-  background: #FF2D55;
-  top: -80px;
-  left: -40px;
-  opacity: 0.3;
-}
-
-.share-glow-2 {
-  width: 150px;
-  height: 150px;
-  background: #AF52DE;
-  top: 50%;
-  right: -40px;
-  opacity: 0.25;
-}
-
-.share-glow-3 {
-  width: 120px;
-  height: 120px;
-  background: #5856D6;
-  bottom: -40px;
-  left: 30%;
-  opacity: 0.2;
-}
-
-.share-noise {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: 0.03;
-  mix-blend-mode: overlay;
-}
-
-.share-scanlines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.1) 2px,
-    rgba(0, 0, 0, 0.1) 4px
-  );
-  pointer-events: none;
-}
-
 .share-card-content {
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: 20px 24px;
+  padding: 28px 32px;
+  display: flex;
+  gap: 32px;
+}
+
+/* Left side - Main stats */
+.share-left {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
 }
 
 .share-badge {
   font-family: 'Space Mono', monospace;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 3px;
   color: #FF2D55;
-  text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .share-main-stat {
-  text-align: center;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .share-number {
-  font-size: 48px;
+  font-size: 64px;
   font-weight: 900;
   line-height: 1;
-  background: linear-gradient(135deg, #fff 0%, #FF2D55 60%, #AF52DE 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #FF2D55;
   display: block;
 }
 
 .share-label {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
   display: block;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .share-time {
-  text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .share-time-value {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 800;
-  background: linear-gradient(90deg, #32D4DE, #30D158);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #32D4DE;
 }
 
 .share-time-label {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
-  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: 8px;
 }
 
-.share-divider {
+.share-url {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.5px;
+  margin-top: auto;
+}
+
+/* Right side - Top Creators */
+.share-right {
+  width: 240px;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
 }
 
-.share-divider-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-}
-
-.share-divider-text {
-  font-size: 8px;
+.share-creators-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 .share-creators {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   flex: 1;
 }
 
 .share-creator {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.03);
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .share-creator-rank {
-  font-size: 16px;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
@@ -2456,13 +2411,12 @@ body {
   flex: 1;
   min-width: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .share-creator-name {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   white-space: nowrap;
@@ -2471,43 +2425,30 @@ body {
 }
 
 .share-creator-count {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.4);
-  white-space: nowrap;
-}
-
-.share-footer {
-  text-align: center;
-  margin-top: auto;
-  padding-top: 8px;
-}
-
-.share-url {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.5px;
 }
 
 /* Mobile adjustments for modal */
-@media (max-width: 520px) {
+@media (max-width: 700px) {
   .share-modal {
-    padding: 24px;
-    margin: 16px;
+    padding: 20px;
+    margin: 12px;
   }
 
-  .share-card {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-  }
-
-  .share-number {
-    font-size: 36px;
+  .share-card-wrapper {
+    transform: scale(0.85);
+    transform-origin: center center;
   }
 
   .share-actions {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 520px) {
+  .share-card-wrapper {
+    transform: scale(0.55);
   }
 }

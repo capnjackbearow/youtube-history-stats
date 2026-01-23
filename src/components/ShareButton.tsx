@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef } from 'react';
 import html2canvas from 'html2canvas';
 import { ParsedStats, ChannelStats } from '../types';
 import { formatDuration } from '../lib/parser';
@@ -17,16 +17,24 @@ export function ShareButton({ stats }: ShareButtonProps) {
   const top3Creators = stats.videoChannelStats.slice(0, 3);
 
   const generateImage = async () => {
-    if (!shareCardRef.current) return;
+    if (!shareCardRef.current) {
+      console.error('Share card ref not found');
+      return;
+    }
 
     setIsGenerating(true);
     try {
+      // Wait a bit for fonts to load
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       const canvas = await html2canvas(shareCardRef.current, {
-        backgroundColor: null,
+        backgroundColor: '#0d0a14',
         scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
+        width: 600,
+        height: 338,
       });
       const dataUrl = canvas.toDataURL('image/png');
       setImageDataUrl(dataUrl);
@@ -37,44 +45,62 @@ export function ShareButton({ stats }: ShareButtonProps) {
   };
 
   useEffect(() => {
-    if (isModalOpen && !imageDataUrl) {
-      // Small delay to ensure the card is rendered
-      const timer = setTimeout(generateImage, 100);
+    if (isModalOpen) {
+      // Reset state when opening
+      setImageDataUrl(null);
+      setCopyStatus('idle');
+      // Generate after a short delay to ensure render
+      const timer = setTimeout(generateImage, 300);
       return () => clearTimeout(timer);
     }
   }, [isModalOpen]);
 
   const handleCopyToClipboard = async () => {
-    if (!imageDataUrl) return;
+    if (!imageDataUrl) {
+      console.error('No image to copy');
+      return;
+    }
 
     setCopyStatus('copying');
     try {
-      const response = await fetch(imageDataUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob })
-      ]);
-      setCopyStatus('copied');
-      setTimeout(() => setCopyStatus('idle'), 2000);
+      // Convert data URL to blob
+      const res = await fetch(imageDataUrl);
+      const blob = await res.blob();
+
+      // Try clipboard API
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        setCopyStatus('copied');
+      } else {
+        // Fallback: just trigger download
+        handleDownload();
+        setCopyStatus('error');
+      }
+      setTimeout(() => setCopyStatus('idle'), 2500);
     } catch (err) {
       console.error('Failed to copy:', err);
       setCopyStatus('error');
-      setTimeout(() => setCopyStatus('idle'), 2000);
+      setTimeout(() => setCopyStatus('idle'), 2500);
     }
   };
 
   const handleDownload = () => {
-    if (!imageDataUrl) return;
+    if (!imageDataUrl) {
+      console.error('No image to download');
+      return;
+    }
     const link = document.createElement('a');
-    link.download = 'youtube-rewind.png';
+    link.download = 'my-youtube-rewind.png';
     link.href = imageDataUrl;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setImageDataUrl(null);
-    setCopyStatus('idle');
   };
 
   return (
@@ -102,16 +128,17 @@ export function ShareButton({ stats }: ShareButtonProps) {
                 </div>
               )}
 
-              {imageDataUrl ? (
+              {/* Always render the card, but show preview image on top when ready */}
+              <div className="share-card-wrapper" style={{ opacity: imageDataUrl ? 0 : 1, position: imageDataUrl ? 'absolute' : 'relative', pointerEvents: 'none' }}>
+                <ShareCard
+                  ref={shareCardRef}
+                  stats={stats}
+                  topCreators={top3Creators}
+                />
+              </div>
+
+              {imageDataUrl && (
                 <img src={imageDataUrl} alt="Your YouTube Rewind" className="share-preview-image" />
-              ) : (
-                <div className="share-card-wrapper">
-                  <ShareCard
-                    ref={shareCardRef}
-                    stats={stats}
-                    topCreators={top3Creators}
-                  />
-                </div>
               )}
             </div>
 
@@ -165,62 +192,48 @@ interface ShareCardProps {
   topCreators: ChannelStats[];
 }
 
-import { forwardRef } from 'react';
-
 const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreators }, ref) => {
   return (
     <div ref={ref} className="share-card">
-      {/* Background effects */}
-      <div className="share-card-bg">
-        <div className="share-glow share-glow-1"></div>
-        <div className="share-glow share-glow-2"></div>
-        <div className="share-glow share-glow-3"></div>
-        <div className="share-noise"></div>
-        <div className="share-scanlines"></div>
-      </div>
+      {/* Background - solid color for html2canvas compatibility */}
+      <div className="share-card-bg"></div>
 
-      {/* Content */}
+      {/* Content - horizontal layout */}
       <div className="share-card-content">
-        {/* Header badge */}
-        <div className="share-badge">MY YOUTUBE REWIND</div>
+        {/* Left side - Stats */}
+        <div className="share-left">
+          <div className="share-badge">MY YOUTUBE REWIND</div>
 
-        {/* Main stat */}
-        <div className="share-main-stat">
-          <span className="share-number">{stats.totalVideos.toLocaleString()}</span>
-          <span className="share-label">total videos & shorts watched</span>
+          <div className="share-main-stat">
+            <span className="share-number">{stats.totalVideos.toLocaleString()}</span>
+            <span className="share-label">videos & shorts watched</span>
+          </div>
+
+          <div className="share-time">
+            <span className="share-time-value">{formatDuration(stats.totalEstimatedHours)}</span>
+            <span className="share-time-label">of my life</span>
+          </div>
+
+          <div className="share-url">youtube-history-stats.vercel.app</div>
         </div>
 
-        {/* Time spent */}
-        <div className="share-time">
-          <span className="share-time-value">{formatDuration(stats.totalEstimatedHours)}</span>
-          <span className="share-time-label">of my life</span>
-        </div>
+        {/* Right side - Top Creators */}
+        <div className="share-right">
+          <div className="share-creators-title">TOP CREATORS</div>
 
-        {/* Divider */}
-        <div className="share-divider">
-          <div className="share-divider-line"></div>
-          <span className="share-divider-text">TOP CREATORS</span>
-          <div className="share-divider-line"></div>
-        </div>
-
-        {/* Top 3 creators */}
-        <div className="share-creators">
-          {topCreators.map((creator, idx) => (
-            <div key={creator.name} className="share-creator">
-              <div className="share-creator-rank">
-                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+          <div className="share-creators">
+            {topCreators.map((creator, idx) => (
+              <div key={creator.name} className="share-creator">
+                <div className="share-creator-rank">
+                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                </div>
+                <div className="share-creator-info">
+                  <span className="share-creator-name">{creator.name}</span>
+                  <span className="share-creator-count">{creator.watchCount.toLocaleString()} watched</span>
+                </div>
               </div>
-              <div className="share-creator-info">
-                <span className="share-creator-name">{creator.name}</span>
-                <span className="share-creator-count">{creator.watchCount.toLocaleString()} videos</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="share-footer">
-          <span className="share-url">youtube-history-stats.vercel.app</span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
