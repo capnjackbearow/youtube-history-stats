@@ -124,16 +124,13 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
         <thead>
           <tr className="section-header-row">
             <th></th>
-            <th colSpan={2} className="section-header">Lifetime Stats</th>
-            <th className="divider-col"></th>
-            <th className="section-header">Creator Stats</th>
+            <th colSpan={2} className="section-header video-stats-header">Video Stats</th>
+            <th className="section-header creator-stats-header" rowSpan={2}>Creator Stats</th>
           </tr>
           <tr className="sub-header-row">
             <th></th>
             <th>Watched</th>
             <th>Time Spent</th>
-            <th className="divider-col"></th>
-            <th>Unique Creators</th>
           </tr>
         </thead>
         <tbody>
@@ -142,7 +139,6 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
               <td className="row-label"><span className="row-emoji">🎬</span> Videos</td>
               <td className="stat-cell">{visible ? <AnimatedNumber value={videoCount} duration={2000} /> : '0'}</td>
               <td className="stat-cell">{formatDuration(videoHours)}</td>
-              <td className="divider-col" rowSpan={rowCount}></td>
               <td className="stat-cell creators-merged" rowSpan={rowCount}>
                 <div className="creators-value">{visible ? <AnimatedNumber value={videoCreators} duration={2000} /> : '0'}</div>
                 <div className="creators-label">channels watched</div>
@@ -154,7 +150,6 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
               <td className="row-label"><span className="row-emoji">⚡</span> Shorts</td>
               <td className="stat-cell">{visible ? <AnimatedNumber value={shortsCount} duration={2000} /> : '0'}</td>
               <td className="stat-cell">{formatDuration(shortsHours)}</td>
-              {!hasVideos && <td className="divider-col" rowSpan={rowCount}></td>}
               {!hasVideos && (
                 <td className="stat-cell creators-merged" rowSpan={rowCount}>
                   <div className="creators-value">0</div>
