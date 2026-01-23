@@ -120,16 +120,16 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
 
   return (
     <div className={`stats-table-container ${visible ? 'visible' : ''}`}>
+      <div className="stats-header-row">
+        <div className="stats-header-spacer"></div>
+        <div className="stats-header-title video-stats-header">Video Stats</div>
+        <div className="stats-header-title creator-stats-header">Creator Stats</div>
+      </div>
       <table className="stats-table">
         <colgroup>
           <col /><col /><col /><col />
         </colgroup>
         <thead>
-          <tr className="section-header-row">
-            <th></th>
-            <th colSpan={2} className="section-header video-stats-header">Video Stats</th>
-            <th className="section-header creator-stats-header">Creator Stats</th>
-          </tr>
           <tr className="sub-header-row">
             <th></th>
             <th>Watched</th>
