@@ -218,7 +218,7 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreato
             <span className="share-time-label">of my life watching YouTube</span>
           </div>
 
-          <div className="share-url">youtube-history-stats.vercel.app</div>
+          <div className="share-url">youtuberewound.vercel.app</div>
         </div>
 
         {/* Right side - Top Creators */}
