@@ -617,11 +617,12 @@ body {
 
 .stats-header-row {
   display: flex;
-  padding: 20px 16px 12px;
+  padding: 20px 0 12px;
 }
 
 .stats-header-spacer {
   width: 20%;
+  flex-shrink: 0;
 }
 
 .stats-header-title {
@@ -635,10 +636,12 @@ body {
 
 .stats-header-title.video-stats-header {
   width: 50%;
+  flex-shrink: 0;
 }
 
 .stats-header-title.creator-stats-header {
   width: 30%;
+  flex-shrink: 0;
 }
 
 .stats-table {
