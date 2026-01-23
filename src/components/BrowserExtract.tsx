@@ -216,6 +216,9 @@ const API_SCRIPT = `(async function() {
   console.log('[' + elapsed() + '] Complete!');
   window.allEntries = entries;
   window.topChannels = output.topChannels;
+
+  // Alert when done
+  alert('YouTube History Scrape Complete!\\n\\nVideos: ' + videoCount + '\\nShorts: ' + shortsCount + '\\nTotal: ' + entries.length + '\\n\\nFile downloaded. You can now upload it to the site.');
 })();`;
 
 export function BrowserExtract() {
