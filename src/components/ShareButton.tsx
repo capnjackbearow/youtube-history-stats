@@ -193,9 +193,11 @@ interface ShareCardProps {
 }
 
 const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreators }, ref) => {
+  const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32']; // Gold, Silver, Bronze
+
   return (
     <div ref={ref} className="share-card">
-      {/* Background - solid color for html2canvas compatibility */}
+      {/* Background */}
       <div className="share-card-bg"></div>
 
       {/* Content - horizontal layout */}
@@ -224,12 +226,15 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreato
           <div className="share-creators">
             {topCreators.map((creator, idx) => (
               <div key={creator.name} className="share-creator">
-                <div className="share-creator-rank">
-                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                <div
+                  className="share-creator-rank"
+                  style={{ color: rankColors[idx] }}
+                >
+                  #{idx + 1}
                 </div>
                 <div className="share-creator-info">
                   <span className="share-creator-name">{creator.name}</span>
-                  <span className="share-creator-count">{creator.watchCount.toLocaleString()} watched</span>
+                  <span className="share-creator-count">{creator.watchCount.toLocaleString()} Videos Watched</span>
                 </div>
               </div>
             ))}
