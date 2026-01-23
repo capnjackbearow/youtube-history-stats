@@ -716,13 +716,17 @@ body {
 }
 
 .stats-table .creators-merged {
+  background: linear-gradient(135deg, rgba(175, 82, 222, 0.15) 0%, rgba(255, 45, 85, 0.1) 100%);
   vertical-align: middle;
-  padding: 24px;
+  padding: 32px 24px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 36px;
   font-weight: 900;
   font-style: italic;
-  color: #FF2D55;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(135deg, #AF52DE 0%, #FF2D55 100%);
   position: relative;
 }
 
