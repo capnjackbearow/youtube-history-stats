@@ -599,7 +599,7 @@ body {
    ============================================ */
 .stats-table-container {
   max-width: 750px;
-  margin: 0 auto 48px;
+  margin: 0 auto 12px;
   padding: 0;
   opacity: 0;
   transform: translateY(20px);
@@ -2059,7 +2059,7 @@ body {
 .share-button-container {
   display: flex;
   justify-content: center;
-  padding: 24px 24px 48px;
+  padding: 12px 24px 24px;
   max-width: 750px;
   margin: 0 auto;
 }
