@@ -1,8 +1,8 @@
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { WatchHistoryEntry } from '../types';
+import { WatchHistoryEntry, EnrichedWatchHistory } from '../types';
 
 interface TakeoutUploaderProps {
-  onDataLoaded: (data: WatchHistoryEntry[]) => void;
+  onDataLoaded: (data: WatchHistoryEntry[] | EnrichedWatchHistory) => void;
 }
 
 export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
@@ -19,6 +19,7 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
 
     const allEntries: WatchHistoryEntry[] = [];
     const seenUrls = new Set<string>();
+    let enrichedData: EnrichedWatchHistory | null = null;
 
     try {
       for (const file of Array.from(files)) {
@@ -27,6 +28,21 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
         const text = await file.text();
         const data = JSON.parse(text);
 
+        // Handle new enriched format: { entries: [...], topChannels: [...], stats: {...} }
+        if (data && data.entries && Array.isArray(data.entries)) {
+          enrichedData = data as EnrichedWatchHistory;
+          for (const entry of data.entries) {
+            if (entry.header === 'YouTube' && entry.titleUrl) {
+              if (!seenUrls.has(entry.titleUrl)) {
+                seenUrls.add(entry.titleUrl);
+                allEntries.push(entry);
+              }
+            }
+          }
+          continue;
+        }
+
+        // Handle old format: direct array of entries
         if (!Array.isArray(data)) continue;
 
         for (const entry of data) {
@@ -45,7 +61,13 @@ export function TakeoutUploader({ onDataLoaded }: TakeoutUploaderProps) {
         return;
       }
 
-      onDataLoaded(allEntries);
+      // If we have enriched data with topChannels, pass the full object
+      if (enrichedData && enrichedData.topChannels) {
+        enrichedData.entries = allEntries; // Use deduplicated entries
+        onDataLoaded(enrichedData);
+      } else {
+        onDataLoaded(allEntries);
+      }
     } catch {
       setError('Failed to parse JSON files. Make sure they\'re valid JSON.');
     } finally {

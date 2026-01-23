@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { WatchHistoryEntry, ParsedStats } from './types';
+import { WatchHistoryEntry, ParsedStats, EnrichedWatchHistory } from './types';
 import { parseWatchHistory } from './lib/parser';
 import { TakeoutUploader } from './components/TakeoutUploader';
 import { BrowserExtract } from './components/BrowserExtract';
@@ -13,7 +13,7 @@ function App() {
     setMounted(true);
   }, []);
 
-  const handleDataLoaded = (data: WatchHistoryEntry[]) => {
+  const handleDataLoaded = (data: WatchHistoryEntry[] | EnrichedWatchHistory) => {
     const parsedStats = parseWatchHistory(data);
     setStats(parsedStats);
   };
