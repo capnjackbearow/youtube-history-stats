@@ -193,12 +193,13 @@ interface ShareCardProps {
 }
 
 const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreators }, ref) => {
-  const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32']; // Gold, Silver, Bronze
-
   return (
     <div ref={ref} className="share-card">
-      {/* Background */}
-      <div className="share-card-bg"></div>
+      {/* Background with gradient glows */}
+      <div className="share-card-bg">
+        <div className="share-glow share-glow-1"></div>
+        <div className="share-glow share-glow-2"></div>
+      </div>
 
       {/* Content - horizontal layout */}
       <div className="share-card-content">
@@ -208,12 +209,13 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreato
 
           <div className="share-main-stat">
             <span className="share-number">{stats.totalVideos.toLocaleString()}</span>
-            <span className="share-label">videos & shorts watched</span>
           </div>
+
+          <div className="share-label">videos & shorts watched</div>
 
           <div className="share-time">
             <span className="share-time-value">{formatDuration(stats.totalEstimatedHours)}</span>
-            <span className="share-time-label">of my life</span>
+            <span className="share-time-label"> of my life</span>
           </div>
 
           <div className="share-url">youtube-history-stats.vercel.app</div>
@@ -225,16 +227,13 @@ const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(({ stats, topCreato
 
           <div className="share-creators">
             {topCreators.map((creator, idx) => (
-              <div key={creator.name} className="share-creator">
-                <div
-                  className="share-creator-rank"
-                  style={{ color: rankColors[idx] }}
-                >
-                  #{idx + 1}
+              <div key={creator.name} className={`share-creator share-creator-${idx + 1}`}>
+                <div className="share-creator-rank">
+                  {idx === 0 ? '1' : idx === 1 ? '2' : '3'}
                 </div>
                 <div className="share-creator-info">
-                  <span className="share-creator-name">{creator.name}</span>
-                  <span className="share-creator-count">{creator.watchCount.toLocaleString()} Videos Watched</span>
+                  <div className="share-creator-name">{creator.name}</div>
+                  <div className="share-creator-count">{creator.watchCount.toLocaleString()} videos</div>
                 </div>
               </div>
             ))}
