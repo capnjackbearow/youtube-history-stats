@@ -2351,7 +2351,7 @@ body {
 }
 
 .share-number {
-  font-size: 76px;
+  font-size: 68px;
   font-weight: 900;
   font-style: italic;
   line-height: 1;
@@ -2367,6 +2367,8 @@ body {
   font-weight: 600;
   color: #fff;
   margin-bottom: 24px;
+  margin-left: 4px;
+  text-align: left;
 }
 
 .share-time-block {
