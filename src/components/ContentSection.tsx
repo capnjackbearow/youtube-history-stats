@@ -121,6 +121,9 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
   return (
     <div className={`stats-table-container ${visible ? 'visible' : ''}`}>
       <table className="stats-table">
+        <colgroup>
+          <col /><col /><col /><col />
+        </colgroup>
         <thead>
           <tr className="section-header-row">
             <th></th>
