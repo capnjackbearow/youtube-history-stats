@@ -82,23 +82,7 @@ const API_SCRIPT = `(async function() {
     return vids;
   };
 
-  var getAvatars = async function(channelUrls) {
-    var avatars = {};
-    for (var i = 0; i < channelUrls.length; i++) {
-      var url = channelUrls[i];
-      try {
-        console.log('[' + elapsed() + '] Avatar ' + (i + 1) + '/' + channelUrls.length);
-        var resp = await fetch(url);
-        var html = await resp.text();
-        var match = html.match(/"avatar":\\{"thumbnails":\\[.*?\\{"url":"([^"]+)"/);
-        if (match) avatars[url] = match[1];
-      } catch (e) {}
-      await new Promise(function(r) { setTimeout(r, 200); });
-    }
-    return avatars;
-  };
-
-  console.log('=== YouTube History Scraper ===');
+  console.log('=== YouTube History Scraper (with Genre Enrichment) ===');
   console.log('Commands: stop() status()');
   console.log('[0s] Starting...');
 
@@ -126,69 +110,61 @@ const API_SCRIPT = `(async function() {
     } catch (e) { console.log('[' + elapsed() + '] Error: ' + e.message); break; }
   }
 
-  console.log('[' + elapsed() + '] History complete: ' + entries.length + ' total (V: ' + videoCount + ' S: ' + shortsCount + ')');
+  console.log('[' + elapsed() + '] Scrape complete: V: ' + videoCount + ' | S: ' + shortsCount + ' | Total: ' + entries.length);
 
-  // Get top channels separately for videos and shorts (matching parser logic)
-  console.log('[' + elapsed() + '] Analyzing channels...');
-  var videoChannels = {};
-  var shortsChannels = {};
+  // Build channel stats and get top 25 for genre enrichment
+  console.log('[' + elapsed() + '] Enriching top 25 channels with genres...');
+  var channelCounts = {};
+  var channelVideos = {};
+
   entries.forEach(function(e) {
-    if (!e.subtitles || !e.subtitles[0] || !e.subtitles[0].name) return;
-    var name = e.subtitles[0].name;
-    var url = e.subtitles[0].url || '';
-    var key = name.toLowerCase();
-    var isShort = e.type === 'short' || (e.titleUrl && e.titleUrl.includes('/shorts/'));
-    var map = isShort ? shortsChannels : videoChannels;
-    if (!map[key]) {
-      map[key] = { name: name, url: url, count: 0 };
-    }
-    map[key].count++;
-    if (url && url.length > 0 && (!map[key].url || map[key].url.length === 0)) {
-      map[key].url = url;
+    if (e.type === 'video' && e.subtitles?.[0]?.name) {
+      var name = e.subtitles[0].name;
+      channelCounts[name] = (channelCounts[name] || 0) + 1;
+      if (!channelVideos[name]) {
+        channelVideos[name] = e.titleUrl.split('v=')[1];
+      }
     }
   });
 
-  // Get top 10 from each category
-  var topVideos = Object.values(videoChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
-  var topShorts = Object.values(shortsChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+  var top25 = Object.entries(channelCounts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 25);
+  var top25Genres = {};
 
-  // Debug: show top video channels and their URLs
-  console.log('[' + elapsed() + '] Top 10 video channels:');
-  topVideos.forEach(function(c, i) {
-    console.log('  ' + (i+1) + '. ' + c.name + ' (' + c.count + ') - URL: ' + (c.url || 'NONE'));
-  });
+  for (var i = 0; i < top25.length; i++) {
+    var name = top25[i][0];
+    var count = top25[i][1];
+    var videoId = channelVideos[name];
 
-  // Combine and dedupe by URL
-  var urlSet = {};
-  var topUrls = [];
-  topVideos.concat(topShorts).forEach(function(c) {
-    if (c.url && c.url.length > 0 && !urlSet[c.url]) {
-      urlSet[c.url] = true;
-      topUrls.push(c.url);
+    try {
+      var resp = await fetch('https://www.youtube.com/watch?v=' + videoId, { credentials: 'include' });
+      var html = await resp.text();
+      var match = html.match(/itemprop="genre"\\s*content="([^"]+)"/);
+      var genre = match?.[1] || 'Unknown';
+      top25Genres[name] = genre;
+      console.log('[' + elapsed() + '] ' + (i + 1) + '/25: ' + name + ' (' + count + ') - ' + genre);
+    } catch (e) {
+      top25Genres[name] = 'Unknown';
+      console.log('[' + elapsed() + '] ' + (i + 1) + '/25: ' + name + ' - Error');
     }
-  });
-  console.log('[' + elapsed() + '] Channels with URLs: ' + topUrls.length);
-
-  var avatars = await getAvatars(topUrls);
-  console.log('[' + elapsed() + '] Fetched ' + Object.keys(avatars).length + ' avatars');
-
-  // Add avatars to entries (match by lowercase name)
-  var nameToAvatar = {};
-  topVideos.concat(topShorts).forEach(function(c) {
-    if (c.url && avatars[c.url]) {
-      nameToAvatar[c.name.toLowerCase()] = avatars[c.url];
-    }
-  });
-  entries.forEach(function(e) {
-    if (e.subtitles && e.subtitles[0] && e.subtitles[0].name) {
-      var avatar = nameToAvatar[e.subtitles[0].name.toLowerCase()];
-      if (avatar) e.subtitles[0].avatar = avatar;
-    }
-  });
+    await new Promise(function(r) { setTimeout(r, 200); });
+  }
 
   console.log('[' + elapsed() + '] Done! Downloading...');
 
-  var blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
+  var output = {
+    entries: entries,
+    topChannels: top25.map(function(c) {
+      return { name: c[0], count: c[1], genre: top25Genres[c[0]] || 'Unknown' };
+    }),
+    stats: {
+      videos: videoCount,
+      shorts: shortsCount,
+      total: entries.length,
+      pages: pageCount
+    }
+  };
+
+  var blob = new Blob([JSON.stringify(output, null, 2)], {type: 'application/json'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'watch-history-' + entries.length + '.json';
@@ -197,6 +173,7 @@ const API_SCRIPT = `(async function() {
   document.body.removeChild(a);
   console.log('[' + elapsed() + '] Complete!');
   window.allEntries = entries;
+  window.topChannels = output.topChannels;
 })();`;
 
 export function BrowserExtract() {
