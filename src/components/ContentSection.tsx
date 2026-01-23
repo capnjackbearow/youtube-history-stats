@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ParsedStats, ChannelStats, CategoryStats as CategoryStatsType } from '../types';
 import { formatDuration, formatDate } from '../lib/parser';
+import { ShareButton } from './ShareButton';
 
 interface ContentSectionProps {
   stats: ParsedStats;
@@ -387,6 +388,11 @@ export function ContentSection({ stats }: ContentSectionProps) {
         shortsCreators={stats.shortsChannelCount}
         baseDelay={400}
       />
+
+      {/* Share Button */}
+      <div className="share-button-container">
+        <ShareButton stats={stats} />
+      </div>
 
       {/* Video Top Creators + Categories Side by Side */}
       <div className="creators-row">
