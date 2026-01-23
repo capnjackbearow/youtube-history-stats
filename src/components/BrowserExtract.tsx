@@ -112,39 +112,81 @@ const API_SCRIPT = `(async function() {
 
   console.log('[' + elapsed() + '] Scrape complete: V: ' + videoCount + ' | S: ' + shortsCount + ' | Total: ' + entries.length);
 
-  // Build channel stats and get top 25 for genre enrichment
-  console.log('[' + elapsed() + '] Enriching top 25 channels with genres...');
-  var channelCounts = {};
+  // Build channel stats separately for videos and shorts
+  console.log('[' + elapsed() + '] Analyzing channels...');
+  var videoChannels = {};
+  var shortsChannels = {};
   var channelVideos = {};
 
   entries.forEach(function(e) {
-    if (e.type === 'video' && e.subtitles?.[0]?.name) {
-      var name = e.subtitles[0].name;
-      channelCounts[name] = (channelCounts[name] || 0) + 1;
-      if (!channelVideos[name]) {
-        channelVideos[name] = e.titleUrl.split('v=')[1];
-      }
+    if (!e.subtitles || !e.subtitles[0] || !e.subtitles[0].name) return;
+    var name = e.subtitles[0].name;
+    var url = e.subtitles[0].url || '';
+    var key = name.toLowerCase();
+    var isShort = e.type === 'short' || (e.titleUrl && e.titleUrl.includes('/shorts/'));
+    var map = isShort ? shortsChannels : videoChannels;
+    if (!map[key]) map[key] = { name: name, url: url, count: 0 };
+    map[key].count++;
+    if (url && url.length > 0 && !map[key].url) map[key].url = url;
+    if (!isShort && !channelVideos[name]) channelVideos[name] = e.titleUrl.split('v=')[1];
+  });
+
+  // Get top channels for avatars
+  var topVideos = Object.values(videoChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+  var topShorts = Object.values(shortsChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 10);
+
+  // Fetch avatars for top channels
+  console.log('[' + elapsed() + '] Fetching avatars for top channels...');
+  var urlSet = {};
+  var topUrls = [];
+  topVideos.concat(topShorts).forEach(function(c) {
+    if (c.url && c.url.length > 0 && !urlSet[c.url]) {
+      urlSet[c.url] = true;
+      topUrls.push({ url: c.url, name: c.name });
     }
   });
 
-  var top25 = Object.entries(channelCounts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 25);
+  var nameToAvatar = {};
+  for (var i = 0; i < topUrls.length; i++) {
+    var item = topUrls[i];
+    try {
+      console.log('[' + elapsed() + '] Avatar ' + (i + 1) + '/' + topUrls.length + ': ' + item.name);
+      var resp = await fetch(item.url, { credentials: 'include' });
+      var html = await resp.text();
+      var match = html.match(/"avatar":\\{"thumbnails":\\[.*?\\{"url":"([^"]+)"/);
+      if (match) nameToAvatar[item.name.toLowerCase()] = match[1];
+    } catch (e) {}
+    await new Promise(function(r) { setTimeout(r, 200); });
+  }
+
+  // Apply avatars to entries
+  entries.forEach(function(e) {
+    if (e.subtitles && e.subtitles[0] && e.subtitles[0].name) {
+      var avatar = nameToAvatar[e.subtitles[0].name.toLowerCase()];
+      if (avatar) e.subtitles[0].avatar = avatar;
+    }
+  });
+  console.log('[' + elapsed() + '] Fetched ' + Object.keys(nameToAvatar).length + ' avatars');
+
+  // Get top 25 for genre enrichment
+  console.log('[' + elapsed() + '] Enriching top 25 channels with genres...');
+  var top25 = Object.values(videoChannels).sort(function(a, b) { return b.count - a.count; }).slice(0, 25);
   var top25Genres = {};
 
   for (var i = 0; i < top25.length; i++) {
-    var name = top25[i][0];
-    var count = top25[i][1];
-    var videoId = channelVideos[name];
+    var ch = top25[i];
+    var videoId = channelVideos[ch.name];
+    if (!videoId) { top25Genres[ch.name] = 'Unknown'; continue; }
 
     try {
       var resp = await fetch('https://www.youtube.com/watch?v=' + videoId, { credentials: 'include' });
       var html = await resp.text();
       var match = html.match(/itemprop="genre"\\s*content="([^"]+)"/);
       var genre = match?.[1] || 'Unknown';
-      top25Genres[name] = genre;
-      console.log('[' + elapsed() + '] ' + (i + 1) + '/25: ' + name + ' (' + count + ') - ' + genre);
+      top25Genres[ch.name] = genre;
+      console.log('[' + elapsed() + '] Genre ' + (i + 1) + '/25: ' + ch.name + ' - ' + genre);
     } catch (e) {
-      top25Genres[name] = 'Unknown';
-      console.log('[' + elapsed() + '] ' + (i + 1) + '/25: ' + name + ' - Error');
+      top25Genres[ch.name] = 'Unknown';
     }
     await new Promise(function(r) { setTimeout(r, 200); });
   }
@@ -154,7 +196,7 @@ const API_SCRIPT = `(async function() {
   var output = {
     entries: entries,
     topChannels: top25.map(function(c) {
-      return { name: c[0], count: c[1], genre: top25Genres[c[0]] || 'Unknown' };
+      return { name: c.name, count: c.count, genre: top25Genres[c.name] || 'Unknown' };
     }),
     stats: {
       videos: videoCount,
