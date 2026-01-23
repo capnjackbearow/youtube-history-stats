@@ -125,12 +125,13 @@ function StatsTable({ videoCount, videoHours, videoCreators, shortsCount, shorts
           <tr className="section-header-row">
             <th></th>
             <th colSpan={2} className="section-header video-stats-header">Video Stats</th>
-            <th className="section-header creator-stats-header" rowSpan={2}>Creator Stats</th>
+            <th className="section-header creator-stats-header">Creator Stats</th>
           </tr>
           <tr className="sub-header-row">
             <th></th>
             <th>Watched</th>
             <th>Time Spent</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
