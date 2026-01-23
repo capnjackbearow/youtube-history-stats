@@ -1,4 +1,4 @@
-import { WatchHistoryEntry, ParsedStats, ChannelStats } from '../types';
+import { WatchHistoryEntry, ParsedStats, ChannelStats, CategoryStats, TopChannelWithGenre, EnrichedWatchHistory } from '../types';
 
 const AVERAGE_VIDEO_MINUTES = 12;
 const AVERAGE_SHORT_MINUTES = 0.5;
@@ -28,7 +28,32 @@ function mapToStats(map: ChannelMap, avgMinutes: number): ChannelStats[] {
     .sort((a, b) => b.watchCount - a.watchCount);
 }
 
-export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
+function calculateCategoryStats(topChannels: TopChannelWithGenre[]): CategoryStats[] {
+  const categoryMap = new Map<string, { channelCount: number; totalMinutes: number }>();
+
+  for (const channel of topChannels) {
+    const genre = channel.genre || 'Unknown';
+    if (genre === 'Unknown') continue;
+
+    const minutes = channel.count * AVERAGE_VIDEO_MINUTES;
+    const existing = categoryMap.get(genre);
+    if (existing) {
+      existing.channelCount++;
+      existing.totalMinutes += minutes;
+    } else {
+      categoryMap.set(genre, { channelCount: 1, totalMinutes: minutes });
+    }
+  }
+
+  return Array.from(categoryMap.entries())
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.totalMinutes - a.totalMinutes);
+}
+
+export function parseWatchHistory(data: WatchHistoryEntry[] | EnrichedWatchHistory): ParsedStats {
+  // Handle both old format (array) and new enriched format (object)
+  const entries = Array.isArray(data) ? data : data.entries;
+  const topChannelsWithGenre = Array.isArray(data) ? undefined : data.topChannels;
   const videoChannelMap: ChannelMap = new Map();
   const shortsChannelMap: ChannelMap = new Map();
   let oldestDate: Date | null = null;
@@ -36,7 +61,7 @@ export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
   let videoCount = 0;
   let shortsCount = 0;
 
-  for (const entry of data) {
+  for (const entry of entries) {
     if (entry.header !== 'YouTube' || !entry.titleUrl || !entry.title.startsWith('Watched ')) continue;
 
     const isShort = entry.type === 'short' || entry.titleUrl.includes('/shorts/');
@@ -64,6 +89,11 @@ export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
     if (diffDays > 1) meaningfulOldestDate = oldestDate;
   }
 
+  // Calculate category stats from enriched data
+  const topCategories = topChannelsWithGenre
+    ? calculateCategoryStats(topChannelsWithGenre)
+    : [];
+
   return {
     totalVideos: videoCount + shortsCount,
     videoCount,
@@ -76,6 +106,7 @@ export function parseWatchHistory(data: WatchHistoryEntry[]): ParsedStats {
     oldestWatchDate: meaningfulOldestDate,
     videoChannelStats: mapToStats(videoChannelMap, AVERAGE_VIDEO_MINUTES),
     shortsChannelStats: mapToStats(shortsChannelMap, AVERAGE_SHORT_MINUTES),
+    topCategories,
   };
 }
 

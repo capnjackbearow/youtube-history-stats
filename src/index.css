@@ -1723,6 +1723,130 @@ body {
 }
 
 /* ============================================
+   CREATORS ROW (Side by Side Layout)
+   ============================================ */
+.creators-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding: 0 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+  .creators-row {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.creators-row .top-channels-section {
+  padding: 0;
+}
+
+/* ============================================
+   TOP CATEGORIES SECTION
+   ============================================ */
+.top-categories-section {
+  padding: 0;
+}
+
+.top-categories-section .section-header {
+  margin-bottom: 24px;
+}
+
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.category-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  opacity: 0;
+  transform: translateX(30px);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.category-card.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.category-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(-4px);
+}
+
+.category-rank {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 28px;
+}
+
+.category-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.category-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.category-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.category-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-time {
+  font-size: 13px;
+  font-weight: 600;
+  color: #AF52DE;
+  white-space: nowrap;
+}
+
+.category-meta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+}
+
+.category-bar-container {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.category-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #AF52DE, #FF2D55);
+  border-radius: 2px;
+  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ============================================
    HIDDEN UTILITY
    ============================================ */
 .hidden {

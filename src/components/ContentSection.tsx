@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ParsedStats, ChannelStats } from '../types';
+import { ParsedStats, ChannelStats, CategoryStats as CategoryStatsType } from '../types';
 import { formatDuration, formatDate } from '../lib/parser';
 
 interface ContentSectionProps {
@@ -274,6 +274,86 @@ function TopCreatorsSection({ title, emoji, channelStats, totalCount, accentColo
   );
 }
 
+const categoryEmojis: Record<string, string> = {
+  'Gaming': '🎮',
+  'Music': '🎵',
+  'Entertainment': '🎭',
+  'Sports': '⚽',
+  'Education': '📚',
+  'Science & Technology': '🔬',
+  'News & Politics': '📰',
+  'Comedy': '😂',
+  'Film & Animation': '🎬',
+  'People & Blogs': '👥',
+  'Howto & Style': '✨',
+  'Pets & Animals': '🐾',
+  'Travel & Events': '✈️',
+  'Autos & Vehicles': '🚗',
+  'Nonprofits & Activism': '💚',
+};
+
+interface TopCategoriesSectionProps {
+  categories: CategoryStatsType[];
+  baseDelay: number;
+}
+
+function TopCategoriesSection({ categories, baseDelay }: TopCategoriesSectionProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), baseDelay);
+    return () => clearTimeout(timer);
+  }, [baseDelay]);
+
+  if (categories.length === 0) return null;
+
+  const displayCategories = categories.slice(0, 5);
+  const maxMinutes = displayCategories[0]?.totalMinutes || 1;
+
+  return (
+    <div className="top-categories-section">
+      <div className="section-header">
+        <span className="header-icon">📊</span>
+        <span>Top Categories</span>
+      </div>
+
+      <div className="categories-list">
+        {displayCategories.map((category, idx) => {
+          const emoji = categoryEmojis[category.name] || '📁';
+          const percentage = (category.totalMinutes / maxMinutes) * 100;
+          const hours = category.totalMinutes / 60;
+
+          return (
+            <div
+              key={category.name}
+              className={`category-card ${visible ? 'visible' : ''}`}
+              style={{ transitionDelay: `${baseDelay + idx * 100}ms` }}
+            >
+              <div className="category-rank">#{idx + 1}</div>
+              <div className="category-icon">{emoji}</div>
+              <div className="category-details">
+                <div className="category-name-row">
+                  <span className="category-label">{category.name}</span>
+                  <span className="category-time">{formatDuration(hours)}</span>
+                </div>
+                <div className="category-meta">
+                  {category.channelCount} creator{category.channelCount !== 1 ? 's' : ''} in top 25
+                </div>
+                <div className="category-bar-container">
+                  <div
+                    className="category-bar"
+                    style={{ width: visible ? `${percentage}%` : '0%' }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ContentSection({ stats }: ContentSectionProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -331,16 +411,25 @@ export function ContentSection({ stats }: ContentSectionProps) {
         />
       </div>
 
-      {/* Top Creators Sections */}
-      <TopCreatorsSection
-        title="Video"
-        emoji="🎬"
-        channelStats={stats.videoChannelStats}
-        totalCount={stats.videoCount}
-        accentColor="#FF6B6B"
-        baseDelay={700}
-      />
+      {/* Video Top Creators + Categories Side by Side */}
+      <div className="creators-row">
+        <TopCreatorsSection
+          title="Video"
+          emoji="🎬"
+          channelStats={stats.videoChannelStats}
+          totalCount={stats.videoCount}
+          accentColor="#FF6B6B"
+          baseDelay={700}
+        />
+        {stats.topCategories.length > 0 && (
+          <TopCategoriesSection
+            categories={stats.topCategories}
+            baseDelay={700}
+          />
+        )}
+      </div>
 
+      {/* Shorts Top Creators */}
       <TopCreatorsSection
         title="Shorts"
         emoji="⚡"

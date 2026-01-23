@@ -11,12 +11,35 @@ export interface WatchHistoryEntry {
   type?: 'video' | 'short';
 }
 
+export interface TopChannelWithGenre {
+  name: string;
+  count: number;
+  genre: string;
+}
+
+export interface EnrichedWatchHistory {
+  entries: WatchHistoryEntry[];
+  topChannels?: TopChannelWithGenre[];
+  stats?: {
+    videos: number;
+    shorts: number;
+    total: number;
+    pages: number;
+  };
+}
+
 export interface ChannelStats {
   name: string;
   url: string;
   watchCount: number;
   estimatedHours: number;
   avatarUrl?: string;
+}
+
+export interface CategoryStats {
+  name: string;
+  channelCount: number;
+  totalMinutes: number;
 }
 
 export interface ParsedStats {
@@ -31,4 +54,5 @@ export interface ParsedStats {
   oldestWatchDate: Date | null;
   videoChannelStats: ChannelStats[];
   shortsChannelStats: ChannelStats[];
+  topCategories: CategoryStats[];
 }
